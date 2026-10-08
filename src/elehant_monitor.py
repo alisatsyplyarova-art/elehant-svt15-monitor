@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 from pathlib import Path
 import asyncio
 import csv
@@ -7,7 +7,7 @@ from datetime import datetime
 
 from bleak import BleakScanner
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 PARSER_DIR = PROJECT_ROOT / "third_party" / "elehant_water" / "custom_components" / "elehant_water"
 
 sys.path.insert(0, str(PARSER_DIR))

@@ -1,77 +1,111 @@
-﻿# Диагностика СВТ-15 Монитора
+﻿# Elehant SVT-15 Monitor Troubleshooting
 
-## 1. Счётчик не находится
+## 1. Meter is not detected
 
-Проверить Bluetooth:
+Check that Bluetooth is enabled in Windows.
 
-Параметры Windows → Bluetooth и устройства → Bluetooth → Вкл.
+The monitor uses Bluetooth Low Energy (BLE) advertising.
+The meter does not need to be paired with Windows.
 
-Проверить BLE:
+Move the computer closer to the meter and make sure the Bluetooth adapter is working.
 
-    C:\Elehant\.venv\Scripts\python.exe C:\Elehant\src\scan_ble.py
+## 2. Meter is detected but no readings appear
 
-Если счётчик не обнаруживается, убедитесь, что компьютер находится рядом со счётчиком и Bluetooth-адаптер работает.
+Check the background service:
 
-## 2. Счётчик находится, но показаний нет
+    Get-Process Elehant_SVT15_Service -ErrorAction SilentlyContinue
 
-Запустить:
-
-    C:\Elehant\.venv\Scripts\python.exe C:\Elehant\src\elehant_read.py
-
-У счётчика должна присутствовать manufacturer data с ID 0xFFFF.
-
-## 3. Не создаётся CSV
-
-Проверить каталог:
-
-    C:\Elehant
-
-Запустить сборщик вручную:
-
-    C:\Elehant\.venv\Scripts\python.exe C:\Elehant\src\elehant_monitor.py
-
-История должна появиться здесь:
-
-    C:\Elehant\elehant_history.csv
-
-## 4. Монитор пустой
-
-Проверить последние записи:
-
-    Get-Content C:\Elehant\elehant_history.csv -Tail 10
-
-Если файл не обновляется, сначала проверить работу BLE-сборщика.
-
-## 5. Не работает автозапуск
-
-Открыть:
-
-    taskschd.msc
-
-Проверить задачу:
-
-    Elehant SVT-15 Monitor
-
-Также можно проверить:
-
-    Get-ScheduledTask -TaskName "Elehant SVT-15 Monitor"
-
-Запустить вручную:
+If the process is not running, start the scheduled task:
 
     Start-ScheduledTask -TaskName "Elehant SVT-15 Monitor"
 
-## 6. Проверка процесса
+Wait several seconds and check the history file.
 
-PowerShell:
+## 3. CSV is not updated
 
-    Get-Process python -ErrorAction SilentlyContinue
+Check the history file:
 
-## 7. Проверка истории
+    Get-Item C:\Elehant\elehant_history.csv
 
-PowerShell:
+Show the latest records:
 
     Get-Content C:\Elehant\elehant_history.csv -Tail 10
 
-## 8. Повторный запуск монитора
+If the file does not exist, check that the service is running.
 
-Перед ручным запуском убедитесь, что старый экземпляр монитора не работает. Иначе можно получить несколько одновременно работающих BLE-сборщиков.
+## 4. GUI is empty
+
+Start the GUI manually:
+
+    C:\Elehant\Elehant_SVT15_Monitor.exe
+
+Then check the history file:
+
+    Get-Content C:\Elehant\elehant_history.csv -Tail 10
+
+The GUI uses the same history file created by the background service.
+
+## 5. Autostart does not work
+
+Check the scheduled task:
+
+    Get-ScheduledTask -TaskName "Elehant SVT-15 Monitor"
+
+Check the last execution result:
+
+    Get-ScheduledTaskInfo -TaskName "Elehant SVT-15 Monitor"
+
+Start it manually:
+
+    Start-ScheduledTask -TaskName "Elehant SVT-15 Monitor"
+
+Then check the service process:
+
+    Get-Process Elehant_SVT15_Service -ErrorAction SilentlyContinue
+
+## 6. Service is running twice
+
+PyInstaller one-file applications can show two processes for one running application.
+A parent bootloader process and its child process are normal.
+
+Do not stop one of the two processes only because two entries are visible.
+
+## 7. Service cannot be updated
+
+If the installer reports that Elehant_SVT15_Service.exe is in use, stop the running service first:
+
+    Get-CimInstance Win32_Process | Where-Object {$_.ExecutablePath -eq "C:\Elehant\Elehant_SVT15_Service.exe"} | Select-Object ProcessId,Name,ExecutablePath
+
+Then stop the reported processes and run the installer again.
+
+## 8. Check the service manually
+
+Run:
+
+    C:\Elehant\Elehant_SVT15_Service.exe
+
+The console should show BLE advertisements and decoded SVT-15 readings.
+
+Stop it with Ctrl+C after testing.
+
+## 9. History file location
+
+The normal installed history file is:
+
+    C:\Elehant\elehant_history.csv
+
+The source-build version writes the CSV next to the executable.
+
+## 10. Source development
+
+For source-level diagnostics, install Python 3.14.x and bleak 3.0.2.
+The source utilities are located in src\.
+
+Build the Windows EXE files with:
+
+    .\scripts\build_exe.ps1
+
+## 11. Bluetooth
+
+The monitor uses passive BLE advertising.
+No pairing and no active connection to the meter are required.

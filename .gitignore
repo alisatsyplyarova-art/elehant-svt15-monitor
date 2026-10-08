@@ -37,3 +37,6 @@ Desktop.ini
 
 # Local EXE builds
 dist/
+
+build-gui/
+build-service/

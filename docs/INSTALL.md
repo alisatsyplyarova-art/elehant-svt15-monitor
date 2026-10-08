@@ -1,117 +1,118 @@
-﻿# Установка СВТ-15 Монитора
+﻿# Elehant SVT-15 Monitor Installation
 
-## 1. Требования
+## 1. Requirements
 
-- Windows 10 или Windows 11
-- Bluetooth-адаптер с поддержкой Bluetooth Low Energy (BLE)
-- Python 3.14.x
+For the ready-to-use Windows EXE version:
+- Windows 10 or Windows 11
+- Bluetooth adapter with Bluetooth Low Energy (BLE) support
+- Administrator rights for installation
 
-Счётчик не требуется сопрягать обычным способом через настройки Bluetooth Windows.
+Python is NOT required for the ready-to-use version.
 
-## 2. Установка
+The meter does not need to be paired through Windows Bluetooth settings.
+The program receives SVT-15 data through BLE advertising and does not connect to the meter.
 
-Самый простой способ — использовать готовый установщик.
+## 2. Installing the ready-to-use version
 
-Откройте каталог:
+1. Download the latest Windows release from GitHub Releases.
+2. Extract the project directory.
+3. Open the project directory as Administrator.
+4. Run:
 
-    install
+    install\install.bat
 
-и запустите:
+The installer:
+- checks the required EXE files;
+- creates C:\Elehant;
+- installs the GUI monitor;
+- installs the background BLE service;
+- installs the VBS autostart file;
+- creates the Windows Scheduled Task.
 
-    install.bat
+Python, virtual environments and Bleak are NOT installed by the ready-to-use installer.
 
-Установщик проверяет Python, создаёт C:\Elehant, копирует программу и BLE-парсер, создаёт виртуальное окружение, устанавливает Bleak и создаёт задачу автозапуска Windows.
-
-## 3. Каталог установки
-
-После установки программа находится в:
+## 3. Installation directory
 
     C:\Elehant
 
-Основные файлы:
+Main files:
 
-    C:\Elehant\src\elehant_monitor.py
-    C:\Elehant\src\elehant_read.py
-    C:\Elehant\src\elehant_viewer.py
-    C:\Elehant\src\scan_ble.py
-    C:\Elehant\src\listen_ble.py
-    C:\Elehant\third_party\elehant_water
-    C:\Elehant\elehant_history.csv
+    C:\Elehant\Elehant_SVT15_Monitor.exe
+    C:\Elehant\Elehant_SVT15_Service.exe
     C:\Elehant\start_elephant_hidden.vbs
+    C:\Elehant\elehant_history.csv
 
-## 4. Проверка BLE
+## 4. Check the background service
 
-Проверить обнаружение счётчика:
+Check the process:
 
-    C:\Elehant\.venv\Scripts\python.exe C:\Elehant\src\scan_ble.py
+    Get-Process Elehant_SVT15_Service -ErrorAction SilentlyContinue
 
-Проверить получение показаний:
+The service listens for BLE advertisements from SVT-15 meters.
 
-    C:\Elehant\.venv\Scripts\python.exe C:\Elehant\src\elehant_read.py
+## 5. Check the history
 
-## 5. Сбор истории
-
-Основной BLE-сборщик:
-
-    C:\Elehant\.venv\Scripts\python.exe C:\Elehant\src\elehant_monitor.py
-
-История сохраняется в:
+The history file is:
 
     C:\Elehant\elehant_history.csv
 
-## 6. Графический монитор
-
-Запуск:
-
-    C:\Elehant\.venv\Scripts\python.exe C:\Elehant\src\elehant_viewer.py
-
-Также можно использовать готовый Windows EXE из GitHub Releases.
-
-## 7. Автозапуск
-
-Установщик создаёт задачу Планировщика Windows:
-
-    Elehant SVT-15 Monitor
-
-Запуск выполняется при входе пользователя в Windows.
-
-Используется файл:
-
-    C:\Elehant\start_elephant_hidden.vbs
-
-Монитор запускается скрыто, без окна консоли.
-
-## 8. Проверка задачи
-
-    Get-ScheduledTask -TaskName "Elehant SVT-15 Monitor"
-
-Запустить вручную:
-
-    Start-ScheduledTask -TaskName "Elehant SVT-15 Monitor"
-
-Проверить процесс:
-
-    Get-Process python -ErrorAction SilentlyContinue
-
-## 9. История показаний
+Show the latest records:
 
     Get-Content C:\Elehant\elehant_history.csv -Tail 10
 
-Для СВТ-15:
+## 6. Start the GUI
 
-- тариф 1 — ГОРЯЧАЯ вода;
-- тариф 2 — ХОЛОДНАЯ вода.
+Run:
 
-## 10. Удаление автозапуска
+    C:\Elehant\Elehant_SVT15_Monitor.exe
+
+The GUI displays current meter readings and historical data.
+
+## 7. Autostart
+
+The installer creates the Windows Scheduled Task:
+
+    Elehant SVT-15 Monitor
+
+The task starts the background service when the user logs in.
+
+The VBS launcher is:
+
+    C:\Elehant\start_elephant_hidden.vbs
+
+## 8. Check the Scheduled Task
+
+    Get-ScheduledTask -TaskName "Elehant SVT-15 Monitor"
+
+Show the last task result:
+
+    Get-ScheduledTaskInfo -TaskName "Elehant SVT-15 Monitor"
+
+## 9. Remove autostart
+
+To remove the scheduled task:
 
     Unregister-ScheduledTask -TaskName "Elehant SVT-15 Monitor" -Confirm:$false
 
-После удаления задачи каталог C:\Elehant можно удалить вручную.
+The installed files in C:\Elehant can then be removed manually.
 
-## 11. Важное замечание
+## 10. Building from source
 
-Счётчик передаёт показания через BLE advertising.
+Source development requires:
+- Python 3.14.x
+- bleak 3.0.2
+- PyInstaller
 
-Подключаться к счётчику через обычное меню Bluetooth Windows не требуется.
+Build both Windows EXE files with:
 
-Компьютер должен находиться в зоне радиосвязи Bluetooth с установленным счётчиком.
+    .\scripts\build_exe.ps1
+
+The resulting files are placed in:
+
+    release\Elehant_SVT15_Monitor.exe
+    release\Elehant_SVT15_Service.exe
+
+## 11. Bluetooth
+
+The monitor uses passive BLE advertising.
+No pairing and no active connection to the meter are required.

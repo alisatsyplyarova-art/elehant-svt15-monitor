@@ -3,119 +3,98 @@
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $InstallDir = "C:\Elehant"
 
+$MonitorExe = Join-Path $ProjectRoot "release\Elehant_SVT15_Monitor.exe"
+$ServiceExe = Join-Path $ProjectRoot "release\Elehant_SVT15_Service.exe"
+$VbsSource  = Join-Path $ProjectRoot "install\start_elephant_hidden.vbs"
+
 Write-Host ""
-Write-Host "======================================" -ForegroundColor Cyan
-Write-Host "       Установка СВТ-15 Монитора" -ForegroundColor Cyan
-Write-Host "======================================" -ForegroundColor Cyan
+Write-Host "======================================"
+Write-Host "Installation"
+Write-Host "======================================"
 Write-Host ""
 
-$PythonCommand = Get-Command python -ErrorAction SilentlyContinue
-
-if (-not $PythonCommand) {
-    Write-Host "Python не найден." -ForegroundColor Red
-    Write-Host "Установите Python 3.14.x и повторите запуск."
-    exit 1
+if (-not (Test-Path $MonitorExe)) {
+    throw "Required installer file is missing: $MonitorExe / $ServiceExe / $VbsSource"
 }
 
+if (-not (Test-Path $ServiceExe)) {
+    throw "Required installer file is missing: $MonitorExe / $ServiceExe / $VbsSource"
+}
+
+if (-not (Test-Path $VbsSource)) {
+    throw "Required installer file is missing: $MonitorExe / $ServiceExe / $VbsSource"
+}
+
+Write-Host "OK" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Working..." -ForegroundColor Cyan
+
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-New-Item -ItemType Directory -Path "$InstallDir\src" -Force | Out-Null
-New-Item -ItemType Directory -Path "$InstallDir\third_party" -Force | Out-Null
 
-Write-Host "Копирование программы..." -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Working..." -ForegroundColor Cyan
 
 Copy-Item `
-    "$ProjectRoot\src\*" `
-    "$InstallDir\src" `
-    -Recurse `
+    $MonitorExe `
+    "$InstallDir\Elehant_SVT15_Monitor.exe" `
     -Force
 
-Write-Host "Копирование parser.py и third_party..." -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Working..." -ForegroundColor Cyan
 
 Copy-Item `
-    "$ProjectRoot\third_party\*" `
-    "$InstallDir\third_party" `
-    -Recurse `
+    $ServiceExe `
+    "$InstallDir\Elehant_SVT15_Service.exe" `
     -Force
 
-Write-Host "Копирование автозапуска..." -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Working..." -ForegroundColor Cyan
 
 Copy-Item `
-    "$ProjectRoot\install\start_elephant_hidden.vbs" `
+    $VbsSource `
     "$InstallDir\start_elephant_hidden.vbs" `
     -Force
 
 Write-Host ""
-Write-Host "Проверка виртуального окружения..." -ForegroundColor Cyan
+Write-Host "Working..." -ForegroundColor Cyan
 
-$Python = "$InstallDir\.venv\Scripts\python.exe"
+$InstalledFiles = @(
+    "$InstallDir\Elehant_SVT15_Monitor.exe",
+    "$InstallDir\Elehant_SVT15_Service.exe",
+    "$InstallDir\start_elephant_hidden.vbs"
+)
 
-if (-not (Test-Path $Python)) {
-    Write-Host "Создание виртуального окружения..."
-    & python -m venv "$InstallDir\.venv"
-}
+foreach ($File in $InstalledFiles) {
+    if (-not (Test-Path $File)) {
+    throw "Required installer file is missing: $MonitorExe / $ServiceExe / $VbsSource"
+    }
 
-if (-not (Test-Path $Python)) {
-    throw "Не удалось создать виртуальное окружение."
-}
-
-Write-Host ""
-Write-Host "Установка зависимостей..." -ForegroundColor Cyan
-
-& $Python -m pip install --upgrade pip
-& $Python -m pip install bleak==3.0.2
-
-Write-Host ""
-Write-Host "Проверка установки..." -ForegroundColor Cyan
-
-& $Python --version
-& $Python -c "from importlib.metadata import version; print('Bleak:', version('bleak'))"
-
-$Parser = "$InstallDir\third_party\elehant_water\custom_components\elehant_water\parser.py"
-
-if (-not (Test-Path $Parser)) {
-    throw "parser.py не найден: $Parser"
-}
-
-$Monitor = "$InstallDir\src\elehant_monitor.py"
-
-if (-not (Test-Path $Monitor)) {
-    throw "elehant_monitor.py не найден: $Monitor"
-}
-
-$Viewer = "$InstallDir\src\elehant_viewer.py"
-
-if (-not (Test-Path $Viewer)) {
-    throw "elehant_viewer.py не найден: $Viewer"
-}
-
-$Vbs = "$InstallDir\start_elephant_hidden.vbs"
-
-if (-not (Test-Path $Vbs)) {
-    throw "start_elephant_hidden.vbs не найден: $Vbs"
+    Write-Host "OK  $File" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "Все основные файлы найдены." -ForegroundColor Green
+Write-Host "======================================"
+Write-Host "Installation"
+Write-Host "======================================"
+Write-Host ""
 
-Write-Host ""
-Write-Host "======================================" -ForegroundColor Green
-Write-Host "       Установка завершена" -ForegroundColor Green
-Write-Host "======================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Программа:"
-Write-Host "  $InstallDir\src"
-Write-Host ""
-Write-Host "Монитор:"
-Write-Host "  $InstallDir\src\elehant_monitor.py"
-Write-Host ""
 Write-Host "GUI:"
-Write-Host "  $InstallDir\src\elehant_viewer.py"
-Write-Host ""
-Write-Host "История:"
-Write-Host "  $InstallDir\elehant_history.csv"
-Write-Host ""
-Write-Host "Автозапуск:"
-Write-Host "  $InstallDir\start_elephant_hidden.vbs"
-Write-Host ""
+Write-Host "  $InstallDir\Elehant_SVT15_Monitor.exe"
 
+Write-Host ""
+Write-Host "Installation"
+Write-Host "  $InstallDir\Elehant_SVT15_Service.exe"
+
+Write-Host ""
+Write-Host "Installation"
+Write-Host "  $InstallDir\elehant_history.csv"
+
+Write-Host ""
+Write-Host "Installation"
+Write-Host "  $InstallDir\start_elephant_hidden.vbs"
+
+Write-Host ""
+Write-Host "OK" -ForegroundColor Green
+Write-Host ""
 
