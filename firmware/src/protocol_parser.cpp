@@ -1,18 +1,19 @@
 #include "protocol_parser.h"
-#include <math.h>
 #include <cstring>
 #include <cstdio>
 
 static uint16_t u16le(const uint8_t* p) { return (uint16_t)p[0] | ((uint16_t)p[1] << 8); }
-static uint32_t u32le(const uint8_t* p) { return (uint32_t)p[0] | ((uint32_t)p[1]<<8) | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24); }
-static uint32_t snFromMac(const char* mac, bool& ok, uint8_t& prefix, uint8_t& model, uint8_t& type) {
+static uint32_t u32le(const uint8_t* p) {
+  return (uint32_t)p[0] | ((uint32_t)p[1]<<8) | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24);
+}
+static uint32_t serialFromAddress(const char* mac, bool& ok, uint8_t& prefix, uint8_t& model, uint8_t& type) {
   ok=false; prefix=model=type=0;
   if (!mac || strlen(mac)<17) return 0;
   unsigned a=0,b=0,c=0,d=0,e=0,f=0;
   if (sscanf(mac,"%x:%x:%x:%x:%x:%x",&a,&b,&c,&d,&e,&f)!=6) return 0;
   prefix=a; model=b; type=c;
   ok=(prefix==0xB0 || prefix==0xC0);
-  return (d<<16)|(e<<8)|f; // BLE address serial is big endian.
+  return (d<<16)|(e<<8)|f;
 }
 static bool knownModel(uint8_t type, uint8_t model) {
   switch(type) {
@@ -25,70 +26,132 @@ static bool knownModel(uint8_t type, uint8_t model) {
     default: return false;
   }
 }
-static bool tempModel(uint8_t type, uint8_t model, uint8_t fw) {
-  if (type==1 || type==3 || type==7) return false;
-  if (type==4) return model==1;
+static bool modelHasTemperature(uint8_t type, uint8_t model) {
   if (type==2) {
-    if (model==1 && (fw==14 || fw==16 || fw==17 || fw==18)) return false;
-    if (model==2 && (fw==14 || fw==16 || fw==17 || fw==18 || fw==19)) return false;
-    if (model==7 || model==8 || model==13 || model==14) return false;
-    return model>=1 && model<=6 || model>=9 && model<=12 || model>=15;
+    if (model==1 || model==2 || (model>=3 && model<=6) || (model>=9 && model<=12) || (model>=15 && model<=18)) return true;
   }
-  return false;
+  return type==4 && model==1;
+}
+static bool temperatureForFirmware(uint8_t type, uint8_t model, uint8_t fw) {
+  bool valid=modelHasTemperature(type,model);
+  if (type==2 && model==1 && (fw==14 || fw==16 || fw==17 || fw==18)) valid=false;
+  if (type==2 && model==2 && (fw==14 || fw==16 || fw==17 || fw==18 || fw==19)) valid=false;
+  return valid;
 }
 static uint8_t batteryPercent(uint8_t raw, uint8_t boundary) {
   if (raw<1 || raw>boundary) return 1;
-  if (raw>100) return 100;
-  return raw;
+  return raw>100 ? 100 : raw;
+}
+static void addField(MeterPacket& out, const char* key, float value, const char* unit) {
+  if (out.fieldCount>=12) return;
+  MeasurementField& f=out.fields[out.fieldCount++];
+  snprintf(f.key,sizeof(f.key),"%s",key);
+  snprintf(f.unit,sizeof(f.unit),"%s",unit);
+  f.value=value;
+}
+static void addEnergyPair(MeterPacket& out, const char* keyA, const char* keyB, uint32_t a, uint32_t b, const char* unit) {
+  addField(out,keyA,a/1000.0f,unit); addField(out,keyB,b/1000.0f,unit);
+  out.reading=a/1000.0f; out.reading2=b/1000.0f;
+  out.hasReading=out.hasReading2=true; out.unit=unit;
 }
 bool parseElehantPacket(const uint8_t* p, size_t n, const char* mac, int rssi, MeterPacket& out) {
   if (!p || n!=17 || !(p[0]&0x80)) return false;
   bool addrOk=false; uint8_t prefix=0, macModel=0, macType=0;
-  uint32_t macSn=snFromMac(mac,addrOk,prefix,macModel,macType);
+  const uint32_t macSn=serialFromAddress(mac,addrOk,prefix,macModel,macType);
   if (!addrOk) return false;
   const uint8_t type=p[4], model=p[5], version=p[3];
   const uint32_t serial=(uint32_t)p[6] | ((uint32_t)p[7]<<8) | ((uint32_t)p[8]<<16);
   if (!serial || serial!=macSn || type!=macType || model!=macModel || !knownModel(type,model)) return false;
   out=MeterPacket{};
   out.type=type; out.model=model; out.version=version; out.serial=serial;
-  out.mac=String(mac); out.rssi=rssi; out.unit="";
-  if (type==7) return version==1; // Gateway status only; never a meter reading.
+  out.mac=String(mac); out.rssi=rssi;
+
+  // WiFi box is recognized for diagnostics, but deliberately has no meter reading.
+  if (type==7) {
+    if (version!=1) return false;
+    out.hasBattery=true;
+    out.batteryPercent=batteryPercent(p[9],171);
+    addField(out,"gateway_firmware",p[10]/10.0f,"version");
+    addField(out,"wifi_status",p[11],"code");
+    addField(out,"meter_count",p[12],"count");
+    addField(out,"wifi_signal",p[14],"%");
+    addField(out,"gateway_state",p[15],"state");
+    return true;
+  }
+
   if (type==3) {
     const uint32_t a=u32le(p+9), b=u32le(p+13);
-    if (version==0) { out.hasReading=out.hasReading2=true; out.reading=a/1000.0f; out.reading2=b/1000.0f; out.unit="kWh"; }
-    else if (version>=1 && version<=4) { out.hasReading=out.hasReading2=true; out.reading=a/1000.0f; out.reading2=b/1000.0f; out.unit="kWh tariff"; }
-    else if (version==16 || (version>=17 && version<=20)) { out.hasReading=out.hasReading2=true; out.reading=a/1000.0f; out.reading2=b/1000.0f; out.unit="kvarh"; }
-    else if (version==32) { out.hasReading=true; out.reading=u16le(p+9)/10.0f; out.unit="V"; }
-    else if (version==33 || version==34 || version==35) { out.hasReading=true; out.reading=u16le(p+9)/(version==35?100.0f:10.0f); out.unit=(version==35?"A":"V"); }
-    else if (version==48) { out.hasReading=true; out.reading=a/100.0f; out.unit="VA"; }
-    else if (version==49) { out.hasReading=out.hasReading2=true; out.reading=a/100.0f; out.reading2=b/100.0f; out.unit="W/var"; }
-    return out.hasReading;
+    char keyA[28],keyB[28];
+    if (version==0) addEnergyPair(out,"energy_import","energy_export",a,b,"kWh");
+    else if (version>=1 && version<=4) {
+      snprintf(keyA,sizeof(keyA),"energy_import_t%u",version);
+      snprintf(keyB,sizeof(keyB),"energy_export_t%u",version);
+      addEnergyPair(out,keyA,keyB,a,b,"kWh");
+    } else if (version==16) addEnergyPair(out,"reactive_import","reactive_export",a,b,"kvarh");
+    else if (version>=17 && version<=20) {
+      snprintf(keyA,sizeof(keyA),"reactive_import_t%u",version-16);
+      snprintf(keyB,sizeof(keyB),"reactive_export_t%u",version-16);
+      addEnergyPair(out,keyA,keyB,a,b,"kvarh");
+    } else if (version==32) {
+      addField(out,"voltage",u16le(p+9)/10.0f,"V");
+      addField(out,"current",u16le(p+11)/100.0f,"A");
+      addField(out,"neutral_current",u16le(p+13)/100.0f,"A");
+      addField(out,"differential_current",u16le(p+15)/100.0f,"A");
+    } else if (version==33) {
+      addField(out,"voltage_a",u16le(p+9)/10.0f,"V"); addField(out,"voltage_b",u16le(p+11)/10.0f,"V"); addField(out,"voltage_c",u16le(p+13)/10.0f,"V");
+    } else if (version==34) {
+      addField(out,"voltage_ab",u16le(p+9)/10.0f,"V"); addField(out,"voltage_bc",u16le(p+11)/10.0f,"V"); addField(out,"voltage_ca",u16le(p+13)/10.0f,"V");
+    } else if (version==35) {
+      addField(out,"current_a",u16le(p+9)/100.0f,"A"); addField(out,"current_b",u16le(p+11)/100.0f,"A"); addField(out,"current_c",u16le(p+13)/100.0f,"A"); addField(out,"neutral_current",u16le(p+15)/100.0f,"A");
+    } else if (version==48) {
+      addField(out,"apparent_power",a/100.0f,"VA"); addField(out,"frequency",u16le(p+13)/100.0f,"Hz"); addField(out,"power_factor",p[15]/100.0f,"cos");
+    } else if (version==49) {
+      addField(out,"active_power",a/100.0f,"W"); addField(out,"reactive_power",b/100.0f,"var");
+    } else return false;
+    return out.fieldCount>0;
   }
+
   if (version==1) {
     uint32_t raw=u32le(p+9);
     if (p[0]&0x04) raw += (p[2]&0x0F)/10.0f;
     out.reading=raw/10000.0f; out.hasReading=true;
     out.unit=(type==4?"GJ":"m3");
-    out.batteryPercent=batteryPercent(p[13],171); out.hasBattery=true;
+    addField(out,type==4?"energy":"volume",out.reading,out.unit.c_str());
+    out.batteryPercent=batteryPercent(p[13],171); out.hasBattery=(type!=3);
+    if (type!=3) addField(out,"battery",out.batteryPercent,"%");
     const int16_t rawTemp=(int16_t)u16le(p+14);
     out.temperatureC=rawTemp/100.0f;
-    out.temperatureValid=tempModel(type,model,p[16]);
+    out.temperatureValid=temperatureForFirmware(type,model,p[16]);
+    if (out.temperatureValid) addField(out,"temperature",out.temperatureC,"C");
     return true;
   }
   if (version==5 && type==2) {
-    uint32_t first=((uint32_t)(p[9]>>4)<<24)|((uint32_t)p[10]<<16)|((uint32_t)p[11]<<8)|p[12];
-    uint32_t second=((uint32_t)(p[9]&0x0F)<<24)|((uint32_t)p[13]<<16)|((uint32_t)p[14]<<8)|p[15];
-    // Protocol: first value belongs to packet model, second to its paired model.
-    // Models 4/6/10/12/16/18 are tariff 1; paired odd/previous models are tariff 2.
-    const bool packetIsTariff1=(model==4 || model==6 || model==10 || model==12 || model==16 || model==18);
-    out.reading=(packetIsTariff1?first:second)/1000.0f;
-    out.reading2=(packetIsTariff1?second:first)/1000.0f;
+    const uint32_t own=((uint32_t)(p[9]>>4)<<24)|((uint32_t)p[10]<<16)|((uint32_t)p[11]<<8)|p[12];
+    const uint32_t paired=((uint32_t)(p[9]&0x0F)<<24)|((uint32_t)p[13]<<16)|((uint32_t)p[14]<<8)|p[15];
+    const uint8_t ownTariff=(model==4 || model==6 || model==10 || model==12 || model==16 || model==18) ? 1 : 2;
+    const uint8_t pairedTariff=ownTariff==1?2:1;
+    out.reading=own/1000.0f; out.reading2=paired/1000.0f;
     out.hasReading=out.hasReading2=true; out.unit="m3";
+    char ownKey[28],pairedKey[28];
+    snprintf(ownKey,sizeof(ownKey),"volume_t%u",ownTariff);
+    snprintf(pairedKey,sizeof(pairedKey),"volume_t%u",pairedTariff);
+    addField(out,ownKey,out.reading,"m3"); addField(out,pairedKey,out.reading2,"m3");
     out.batteryPercent=batteryPercent(p[1],127); out.hasBattery=true;
-    out.temperatureC=p[2]; out.temperatureValid=tempModel(type,model,p[16]);
+    addField(out,"battery",out.batteryPercent,"%");
+    out.temperatureC=p[2]; out.temperatureValid=temperatureForFirmware(type,model,p[16]);
+    if (out.temperatureValid) addField(out,"temperature",out.temperatureC,"C");
     return true;
   }
-  // Version 8 is historical data, not a current reading; version 9 has
-  // separate heat-carrier fields and will be handled by the richer model later.
+  if (version==9) {
+    out.hasHeatCarrier=true;
+    out.heatCarrierVolume=u32le(p+9)/10000.0f;
+    out.inletTemperatureC=u16le(p+13)/100.0f;
+    out.outletTemperatureC=u16le(p+15)/100.0f;
+    out.heatTemperaturesValid=true;
+    addField(out,"coolant_volume",out.heatCarrierVolume,"m3");
+    addField(out,"temperature_inlet",out.inletTemperatureC,"C");
+    addField(out,"temperature_outlet",out.outletTemperatureC,"C");
+    return true;
+  }
   return false;
 }
