@@ -20,8 +20,7 @@ bool StorageManager::loadMeters(MeterConfig* meters, uint8_t capacity, uint8_t& 
   const uint8_t saved=p.getUChar("meterCount",0);
   const size_t bytes=p.getBytesLength("meters");
   if (schema==STORAGE_SCHEMA && saved<=capacity && bytes==sizeof(MeterConfig)*saved) {
-    count=(uint8_t)p.getBytes("meters",meters,bytes);
-    // Preferences::getBytes returns byte count, not element count.
+    p.getBytes("meters",meters,bytes);
     count=(uint8_t)saved;
   }
   p.end();
