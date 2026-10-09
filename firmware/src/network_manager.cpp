@@ -50,8 +50,9 @@ static void handleMeters(){
   if(!manager){server.send(503,"application/json","{\"error\":\"not_ready\"}");return;}
   String out="{\"max\":"+String(MAX_METERS)+",\"meters\":[";
   for(uint8_t i=0;i<manager->count();++i){
-    if(i)out+=",";
     const MeterConfig* cfg=manager->configAt(i);
+    if (!cfg || !(cfg->flags&METER_ACTIVE) || !(cfg->flags&METER_WEB)) continue;
+    if (out[out.length()-1]!='[') out+=",";
     const MeterPacket* p=manager->latestAt(i);
     out+="{\"serial\":"+String(cfg?cfg->serial:0)+",\"type\":"+String(cfg?cfg->type:0)+",\"typeName\":\""+String(cfg&&cfg->type==1?"Газ":cfg&&cfg->type==2?"Вода":cfg&&cfg->type==3?"Электроэнергия":cfg&&cfg->type==4?"Тепло":"Счётчик")+
       "\",\"model\":"+String(cfg?cfg->model:0)+",\"flags\":"+String(cfg?cfg->flags:0)+",\"rssi\":"+String(p?p->rssi:0)+",\"battery\":";
