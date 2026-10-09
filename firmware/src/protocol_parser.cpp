@@ -116,7 +116,14 @@ bool parseElehantPacket(const uint8_t* p, size_t n, const char* mac, int rssi, M
     if (p[0]&0x04) raw += (p[2]&0x0F)/10.0f;
     out.reading=raw/10000.0f; out.hasReading=true;
     out.unit=(type==4?"GJ":"m3");
-    if (type==2 && (model==3 || model==4 || model==5 || model==6 || (model>=9 && model<=12) || (model>=15 && model<=18))) {\n      const uint8_t tariff=(model==4 || model==6 || model==10 || model==12 || model==16 || model==18)?1:2;\n      char key[28]; snprintf(key,sizeof(key),"volume_t%u",tariff); addField(out,key,out.reading,"m3");\n    } else addField(out,type==4?"energy":"volume",out.reading,out.unit.c_str());
+    if (type==2 && (model==3 || model==4 || model==5 || model==6 || (model>=9 && model<=12) || (model>=15 && model<=18))) {
+      const uint8_t tariff=(model==4 || model==6 || model==10 || model==12 || model==16 || model==18)?1:2;
+      char key[28];
+      snprintf(key,sizeof(key),"volume_t%u",tariff);
+      addField(out,key,out.reading,"m3");
+    } else {
+      addField(out,type==4?"energy":"volume",out.reading,out.unit.c_str());
+    }
     out.batteryPercent=batteryPercent(p[13],171); out.hasBattery=(type!=3);
     if (type!=3) addField(out,"battery",out.batteryPercent,"%");
     const int16_t rawTemp=(int16_t)u16le(p+14);
