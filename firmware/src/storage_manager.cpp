@@ -8,7 +8,7 @@ static const char* HISTORY_PATH="/history.csv";
 static const uint8_t STORAGE_SCHEMA=1;
 
 bool StorageManager::begin() {
-  ready_=LittleFS.begin(true);
+  ready_=LittleFS.begin(false);
   return ready_;
 }
 bool StorageManager::loadMeters(MeterConfig* meters, uint8_t capacity, uint8_t& count) {
