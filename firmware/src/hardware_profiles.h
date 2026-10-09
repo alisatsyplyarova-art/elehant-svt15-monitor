@@ -6,7 +6,7 @@ struct HardwareProfile {
   const char* name;
   int buttonUp, buttonDown;
   bool upPullup, downPullup;
-  int displaySclk, displayMosi, displayCs, displayDc, displayRst, displayBacklight;
+  int displaySclk, displayMosi, displayCs, displayDc, displayRst, displayBacklight, displayPower;
   bool hasBuiltInDisplay;
 };
 
@@ -39,4 +39,4 @@ static const HardwareProfile HW = {
 // GPIO7=LCD CS; GPIO10=backlight. Check the exact C3 module.
 // Classic T-Display: GPIO0=BTN1/BOOT; GPIO35=BTN2 (input-only, no internal pull-up);
 // display GPIO18=SCLK, 19=MOSI, 5=CS, 16=DC, 23=RST, 4=BL.
-// T-Display S3 is a different board. Confirm the PCB version and pinout.
+// T-Display S3: typical pins are SCLK=18, MOSI=17, CS=6, DC=7, RST=5, BL=38, power-enable=15. Confirm PCB revision.
