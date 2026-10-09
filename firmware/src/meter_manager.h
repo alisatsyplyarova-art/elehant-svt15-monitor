@@ -17,6 +17,7 @@ public:
   uint8_t count() const { return count_; }
   const MeterConfig* configAt(uint8_t i) const;
   const MeterPacket* latestAt(uint8_t i) const;
+  bool setFlagAt(uint8_t i, uint16_t flag, bool enabled);
   StorageManager& storage() { return storage_; }
 private:
   struct Slot { MeterConfig config; MeterPacket latest; bool seen=false; };
