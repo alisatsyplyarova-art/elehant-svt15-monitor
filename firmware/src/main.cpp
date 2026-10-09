@@ -5,6 +5,7 @@
 #include "button_manager.h"
 #include "ble_scanner.h"
 #include "meter_manager.h"
+#include "display_manager.h"
 
 ButtonManager buttons;
 MeterManager meterManager;
@@ -21,10 +22,13 @@ void setup() {
   if (!meterManager.begin()) Serial.println(F("WARNING: meter settings load failed"));
   Serial.printf("Saved meters: %u\n",meterManager.count());
   buttons.begin(HW.buttonUp, HW.buttonDown, HW.upPullup, HW.downPullup);
+  displayBegin();
   bleScannerBegin();
 }
 void loop() {
-  switch (buttons.update(millis())) {
+  const ButtonEvent event=buttons.update(millis());
+  if (event!=ButtonEvent::None) displayWake();
+  switch (event) {
     case ButtonEvent::UpShort: Serial.println(F("BUTTON UP")); break;
     case ButtonEvent::DownShort: Serial.println(F("BUTTON DOWN")); break;
     case ButtonEvent::BothShort: Serial.println(F("BUTTON BOTH SHORT")); break;
@@ -39,6 +43,7 @@ void loop() {
   bleScannerPoll();
   const time_t now=time(nullptr);
   meterManager.process(millis(),now);
+  displayRender(meterManager,millis());
   if (now>1760000000 && millis()-lastPruneAt>86400000UL) {
     meterManager.storage().pruneHistory(now,HISTORY_RETENTION_DAYS);
     lastPruneAt=millis();
