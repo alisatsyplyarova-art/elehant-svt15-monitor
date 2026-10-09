@@ -2,6 +2,9 @@
 #include <cstring>
 #include <time.h>
 
+static bool tariffOneModel(uint8_t model) {
+  return model==4 || model==6 || model==10 || model==12 || model==16 || model==18;
+}
 bool MeterManager::begin() {
   storage_.begin();
   MeterConfig saved[MAX_METERS];
@@ -26,17 +29,47 @@ void MeterManager::observe(const MeterPacket& packet) {
     cfg.serial=packet.serial; cfg.type=packet.type; cfg.model=packet.model;
     snprintf(cfg.mac,sizeof(cfg.mac),"%s",packet.mac.c_str());
     cfg.flags=0x01FF;
+    slots_[idx].latest=packet;
+    slots_[idx].seen=true;
     dirty_=true;
     Serial.printf("New meter discovered: SN=%lu type=%u model=%u (%u/%u)\n",
       (unsigned long)cfg.serial,cfg.type,cfg.model,count_,MAX_METERS);
+    return;
   }
   Slot& slot=slots_[idx];
-  slot.latest=packet;
-  slot.seen=true;
-  if (strncmp(slot.config.mac,packet.mac.c_str(),sizeof(slot.config.mac))!=0) {
+  MeterPacket& merged=slot.latest;
+  // Merge by field key because electrical meters rotate packet versions and
+  // two-tariff water meters advertise each tariff from a paired model address.
+  for (uint8_t i=0;i<packet.fieldCount;i++) {
+    int found=-1;
+    for (uint8_t j=0;j<merged.fieldCount;j++) {
+      if (strncmp(merged.fields[j].key,packet.fields[i].key,sizeof(merged.fields[j].key))==0) { found=j; break; }
+    }
+    if (found>=0) merged.fields[found]=packet.fields[i];
+    else if (merged.fieldCount<12) merged.fields[merged.fieldCount++]=packet.fields[i];
+  }
+  merged.type=packet.type; merged.serial=packet.serial; merged.mac=packet.mac;
+  merged.rssi=packet.rssi; merged.version=packet.version;
+  merged.hasBattery=packet.hasBattery;
+  if (packet.hasBattery) merged.batteryPercent=packet.batteryPercent;
+  if (packet.temperatureValid) { merged.temperatureValid=true; merged.temperatureC=packet.temperatureC; }
+  merged.hasHeatCarrier=packet.hasHeatCarrier;
+  if (packet.hasHeatCarrier) {
+    merged.heatCarrierVolume=packet.heatCarrierVolume;
+    merged.inletTemperatureC=packet.inletTemperatureC;
+    merged.outletTemperatureC=packet.outletTemperatureC;
+  }
+  merged.hasReading=packet.hasReading; merged.hasReading2=packet.hasReading2;
+  if (packet.hasReading) merged.reading=packet.reading;
+  if (packet.hasReading2) merged.reading2=packet.reading2;
+  merged.unit=packet.unit;
+  // For paired tariff models, keep the canonical tariff-1 model in the registry.
+  if (packet.type==2 && tariffOneModel(packet.model) && !tariffOneModel(slot.config.model)) {
+    slot.config.model=packet.model;
     snprintf(slot.config.mac,sizeof(slot.config.mac),"%s",packet.mac.c_str());
     dirty_=true;
   }
+  slot.seen=true;
 }
 void MeterManager::process(uint32_t nowMillis, time_t nowEpoch) {
   if (dirty_ && nowMillis-lastSaveAt_>=2000) {
@@ -45,7 +78,7 @@ void MeterManager::process(uint32_t nowMillis, time_t nowEpoch) {
     if (storage_.saveMeters(configs,count_)) dirty_=false;
     lastSaveAt_=nowMillis;
   }
-  if (nowEpoch<1760000000) return; // No valid clock yet: do not write misleading timestamps.
+  if (nowEpoch<1760000000) return;
   struct tm local{};
   localtime_r(&nowEpoch,&local);
   const int32_t day=(int32_t)(local.tm_year*400+local.tm_yday);
