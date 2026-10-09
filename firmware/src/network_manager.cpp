@@ -2,6 +2,8 @@
 #include "config.h"
 #include <WiFi.h>
 #include <WebServer.h>
+#include <Preferences.h>
+#include <time.h>
 #include <LittleFS.h>
 #include <time.h>
 
@@ -19,7 +21,7 @@ h1{font-size:22px;margin:0}h2{font-size:18px;margin:0 0 8px}.muted{color:#aab8ca
 label{display:flex;align-items:center;gap:8px;background:#26364c;padding:9px;border-radius:8px}input{accent-color:#5eead4;width:18px;height:18px}
 button{padding:10px 14px;border:0;border-radius:8px;background:#0f766e;color:white;font-weight:600}
 </style></head><body><header><h1>Elehant SVT-15 Monitor</h1><div class="muted">Локальная сеть устройства</div></header><main>
-<p id="status">Загрузка данных…</p><section class="meter"><h2>Состояние и история</h2><p id="sys" class="muted">Загрузка…</p><a href="/history.csv" style="color:#5eead4">Скачать историю CSV</a></section><div id="meters"></div></main>
+<p id="status">Загрузка данных…</p><section class="meter"><h2>Состояние и история</h2><p id="sys" class="muted">Загрузка…</p><a href="/history.csv" style="color:#5eead4">Скачать историю CSV</a><hr><h2 style="margin-top:14px">Wi-Fi роутер и время</h2><p class="muted">Точка доступа SVT-15 останется доступной. Пароль роутера хранится в настройках ESP32.</p><form id="netform" onsubmit="saveNetwork(event)"><p>Имя Wi-Fi (SSID)<br><input id="ssid" maxlength="32" autocomplete="off" style="width:95%;padding:10px"></p><p>Пароль Wi-Fi (оставьте пустым для открытой сети или чтобы очистить пароль)<br><input id="pass" type="password" maxlength="63" autocomplete="new-password" style="width:95%;padding:10px"></p><p>Часовой пояс относительно UTC, часов (например, 5.5)<br><input id="tz" type="number" min="-12" max="14" step="0.25" value="0" style="width:100px;padding:10px"></p><button type="submit">Сохранить настройки</button></form><p id="netmsg" class="muted"></p></section><div id="meters"></div></main>
 <script>
 const flags=['active','collect','history','lcd','web','telegram','totals','calculator','alarms'];
 const labels=['Активен','Сбор данных','История','Экран','WEB','Telegram','Итоги','Калькулятор','Тревоги'];
@@ -27,8 +29,10 @@ async function refresh(){try{let r=await fetch('/api/meters');if(!r.ok)throw Err
 document.getElementById('meters').innerHTML=d.meters.map((m,i)=>'<section class="meter"><h2>'+m.serial+' · '+m.typeName+'</h2><div class="muted">Модель '+m.model+' · '+m.rssi+' dBm · '+(m.battery===null?'батарея —':('батарея '+m.battery+'%'))+'</div><p>'+m.readings.map(x=>x.key+': '+x.value+' '+x.unit).join('<br>')+'</p><div class="grid">'+flags.map((f,j)=>'<label><input type="checkbox" '+((m.flags&(1<<j))?'checked':'')+' onchange="setFlag('+i+',\''+f+'\',this.checked)"><span>'+labels[j]+'</span></label>').join('')+'</div></section>').join('')||'<section class="meter">Пока нет счётчиков. Ожидается BLE-реклама.</section>';
 }catch(e){document.getElementById('status').textContent='Ошибка: '+e.message}}
 async function setFlag(i,f,v){try{let r=await fetch('/api/flag?index='+i+'&flag='+f+'&value='+(v?1:0),{method:'POST'});if(!r.ok)throw Error('HTTP '+r.status);refresh()}catch(e){alert('Не удалось сохранить настройку: '+e.message);refresh()}}
+async function saveNetwork(e){e.preventDefault();let p=new URLSearchParams();p.set('ssid',document.getElementById('ssid').value);p.set('pass',document.getElementById('pass').value);p.set('tz',document.getElementById('tz').value);try{let r=await fetch('/api/network',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString()});let d=await r.json();if(!r.ok)throw Error(d.error||r.status);document.getElementById('netmsg').textContent='Сохранено. Подключение к роутеру и синхронизация времени выполняются в фоне.';document.getElementById('pass').value='';loadNetwork();status();}catch(err){document.getElementById('netmsg').textContent='Ошибка: '+err.message}}
+async function loadNetwork(){try{let r=await fetch('/api/network');let d=await r.json();document.getElementById('ssid').value=d.ssid||'';document.getElementById('tz').value=d.tz;}catch(e){}}
 async function status(){try{let r=await fetch('/api/status');let d=await r.json();document.getElementById('sys').textContent='Время: '+d.time+' · uptime '+d.uptime+' с · свободная RAM '+d.heap+' байт · LittleFS '+d.fsUsed+'/'+d.fsTotal+' байт · клиентов Wi-Fi '+d.clients;}catch(e){}}
-refresh();status();setInterval(refresh,5000);setInterval(status,15000);
+refresh();loadNetwork();status();setInterval(refresh,5000);setInterval(status,15000);
 </script></body></html>)HTML";
 
 static uint16_t bitForFlag(const String& name) {
@@ -69,6 +73,77 @@ static void handleStatus() {
     ",\"heap\":"+String(ESP.getFreeHeap())+",\"fsUsed\":"+String(LittleFS.usedBytes())+
     ",\"fsTotal\":"+String(LittleFS.totalBytes())+",\"clients\":"+String(WiFi.softAPgetStationNum())+"}";
   server.send(200,"application/json; charset=utf-8",out);
+}
+
+
+static String makeTimezone(float hours) {
+  int total=(int)lroundf(hours*60.0f);
+  char buf[24];
+  if(total==0) return String("UTC0");
+  char sign=total>0?'-':'+';
+  int a=abs(total);
+  snprintf(buf,sizeof(buf),"UTC%c%d:%02d",sign,a/60,a%60);
+  return String(buf);
+}
+static void applyTimezone(float hours) {
+  String tz=makeTimezone(hours);
+  setenv("TZ",tz.c_str(),1);
+  tzset();
+}
+static void startNtp(float hours) {
+  applyTimezone(hours);
+  configTime(0,0,"pool.ntp.org","time.google.com","time.cloudflare.com");
+}
+static void handleGetNetwork() {
+  Preferences p;
+  p.begin("svt15net",true);
+  String ssid=p.getString("ssid","");
+  float tz=p.getFloat("tz",0.0f);
+  p.end();
+  server.send(200,"application/json; charset=utf-8","{\"ssid\":\""+jsonEscape(ssid)+"\",\"tz\":"+String(tz,2)+"}");
+}
+static void handleSetNetwork() {
+  if(!server.hasArg("ssid") || !server.hasArg("pass") || !server.hasArg("tz")) {
+    server.send(400,"application/json","{\"error\":\"missing_argument\"}"); return;
+  }
+  String ssid=server.arg("ssid");
+  String pass=server.arg("pass");
+  String tzArg=server.arg("tz");
+  if(ssid.length()>32 || pass.length()>63 || !tzArg.length()) {
+    server.send(400,"application/json","{\"error\":\"invalid_settings\"}"); return;
+  }
+  float tz=tzArg.toFloat();
+  if(tz < -12.0f || tz > 14.0f) {
+    server.send(400,"application/json","{\"error\":\"timezone_out_of_range\"}"); return;
+  }
+  Preferences p;
+  if(!p.begin("svt15net",false)) { server.send(500,"application/json","{\"error\":\"storage_failed\"}"); return; }
+  p.putString("ssid",ssid);
+  p.putString("pass",pass);
+  p.putFloat("tz",tz);
+  p.end();
+  startNtp(tz);
+  if(ssid.length()) {
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.begin(ssid.c_str(),pass.c_str());
+  } else {
+    WiFi.disconnect(false,false);
+    WiFi.mode(WIFI_AP);
+  }
+  server.send(200,"application/json","{\"ok\":true}");
+}
+static void loadNetworkSettings() {
+  Preferences p;
+  p.begin("svt15net",true);
+  String ssid=p.getString("ssid","");
+  String pass=p.getString("pass","");
+  float tz=p.getFloat("tz",0.0f);
+  p.end();
+  startNtp(tz);
+  if(ssid.length()) {
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.begin(ssid.c_str(),pass.c_str());
+  }
 }
 
 static void handleRoot(){server.send_P(200,"text/html; charset=utf-8",PAGE);}
@@ -120,10 +195,13 @@ void networkBegin(MeterManager& meters){
   server.on("/",HTTP_GET,handleRoot);
   server.on("/history.csv",HTTP_GET,handleHistory);
   server.on("/api/status",HTTP_GET,handleStatus);
+  server.on("/api/network",HTTP_GET,handleGetNetwork);
+  server.on("/api/network",HTTP_POST,handleSetNetwork);
   server.on("/api/meters",HTTP_GET,handleMeters);
   server.on("/api/flag",HTTP_POST,handleFlag);
   server.onNotFound([](){server.send(404,"application/json","{\"error\":\"not_found\"}");});
   server.begin();
+  loadNetworkSettings();
   started=true;
 }
 void networkLoop(){if(started)server.handleClient();}
