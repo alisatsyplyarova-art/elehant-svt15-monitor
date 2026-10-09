@@ -1,10 +1,15 @@
 #include <Arduino.h>
+#include <time.h>
 #include "config.h"
 #include "hardware_profiles.h"
 #include "button_manager.h"
 #include "ble_scanner.h"
+#include "meter_manager.h"
 
 ButtonManager buttons;
+MeterManager meterManager;
+uint32_t lastStorageStatus=0;
+
 void setup() {
   Serial.begin(115200);
   delay(1200);
@@ -12,6 +17,8 @@ void setup() {
   Serial.println(F("Elehant SVT-15 Monitor — firmware foundation"));
   Serial.printf("Hardware: %s\nUP GPIO: %d\nDOWN GPIO: %d\n",
                 HW.name, HW.buttonUp, HW.buttonDown);
+  if (!meterManager.begin()) Serial.println(F("WARNING: meter settings load failed"));
+  Serial.printf("Saved meters: %u\n",meterManager.count());
   buttons.begin(HW.buttonUp, HW.buttonDown, HW.upPullup, HW.downPullup);
   bleScannerBegin();
 }
@@ -29,5 +36,13 @@ void loop() {
     default: break;
   }
   bleScannerPoll();
+  const time_t now=time(nullptr);
+  meterManager.process(millis(),now);
+  if (millis()-lastStorageStatus>60000UL) {
+    lastStorageStatus=millis();
+    Serial.printf("Meters: %u; LittleFS: %llu/%llu bytes\n",meterManager.count(),
+      (unsigned long long)meterManager.storage().filesystemUsed(),
+      (unsigned long long)meterManager.storage().filesystemTotal());
+  }
   delay(5);
 }
