@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "config.h"
 #include "protocol_parser.h"
 #include "storage_manager.h"
 
