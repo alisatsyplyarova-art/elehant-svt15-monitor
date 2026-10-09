@@ -2,6 +2,8 @@
 #include <NimBLEDevice.h>
 #include "ble_scanner.h"
 #include "protocol_parser.h"
+#include "meter_manager.h"
+extern MeterManager meterManager;
 
 static NimBLEScan* scanner=nullptr;
 
@@ -16,7 +18,7 @@ class RawCallbacks : public NimBLEScanCallbacks {
     if (len >= 19 && data[0] == 0xFF && data[1] == 0xFF) { data+=2; len-=2; }
     MeterPacket packet;
     const String mac=d->getAddress().toString().c_str();
-    if (!parseElehantPacket(data,len,mac.c_str(),d->getRSSI(),packet)) return;
+    if (!parseElehantPacket(data,len,mac.c_str(),d->getRSSI(),packet)) return;\n    meterManager.observe(packet);
     Serial.printf("Elehant type=%u model=%u SN=%lu version=%u MAC=%s RSSI=%d\n",
       packet.type, packet.model, (unsigned long)packet.serial, packet.version,
       packet.mac.c_str(), packet.rssi);
