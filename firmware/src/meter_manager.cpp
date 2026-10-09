@@ -94,3 +94,12 @@ void MeterManager::process(uint32_t nowMillis, time_t nowEpoch) {
 }
 const MeterConfig* MeterManager::configAt(uint8_t i) const { return i<count_?&slots_[i].config:nullptr; }
 const MeterPacket* MeterManager::latestAt(uint8_t i) const { return i<count_ && slots_[i].seen?&slots_[i].latest:nullptr; }
+bool MeterManager::setFlagAt(uint8_t i, uint16_t flag, bool enabled) {
+  if (i>=count_) return false;
+  const uint16_t before=slots_[i].config.flags;
+  if (enabled) slots_[i].config.flags|=flag;
+  else slots_[i].config.flags&=(uint16_t)~flag;
+  if (before==slots_[i].config.flags) return true;
+  dirty_=true;
+  return true;
+}
