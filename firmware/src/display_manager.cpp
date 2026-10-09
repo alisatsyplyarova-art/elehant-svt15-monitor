@@ -15,6 +15,7 @@ static uint32_t lastDrawAt=0;
 static uint8_t page=0;
 static bool initialized=false;
 
+#if defined(DISPLAY_LCD5110) || defined(DISPLAY_ST7789)
 static void printFieldLine(const MeterPacket* packet, uint8_t row) {
   if (!packet || !packet->fieldCount) return;
   const uint8_t index=(uint8_t)(row % packet->fieldCount);
@@ -25,6 +26,7 @@ static void printFieldLine(const MeterPacket* packet, uint8_t row) {
   line += f.unit;
   screen.println(line);
 }
+#endif
 
 void displayBegin() {
 #if defined(DISPLAY_LCD5110)
