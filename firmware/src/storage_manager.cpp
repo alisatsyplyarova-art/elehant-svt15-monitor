@@ -68,6 +68,7 @@ void StorageManager::pruneHistory(time_t now, uint16_t retentionDays) {
   if (!out) { in.close(); return; }
   while (in.available()) {
     String line=in.readStringUntil('\n');
+    if (line.startsWith("epoch;")) { out.println(line); continue; }
     const int sep=line.indexOf(';');
     const long epoch=sep>0?line.substring(0,sep).toInt():0;
     if (epoch>=cutoff) out.println(line);
