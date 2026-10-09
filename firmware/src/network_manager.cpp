@@ -121,7 +121,7 @@ static void handleSetNetwork() {
   if(!p.begin("svt15net",false)) { server.send(500,"application/json","{\"error\":\"storage_failed\"}"); return; }
   const String oldSsid=p.getString("ssid","");
   const String oldPass=p.getString("pass","");
-  if(ssid==oldSsid && pass.isEmpty()) pass=oldPass;
+  if(ssid==oldSsid && pass.length()==0) pass=oldPass;
   p.putString("ssid",ssid);
   p.putString("pass",pass);
   p.putFloat("tz",tz);
