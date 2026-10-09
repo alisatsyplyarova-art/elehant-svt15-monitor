@@ -52,7 +52,7 @@ bool parseElehantPacket(const uint8_t* p, size_t n, const char* mac, int rssi, M
   out=MeterPacket{};
   out.type=type; out.model=model; out.version=version; out.serial=serial;
   out.mac=String(mac); out.rssi=rssi; out.unit="";
-  if (type==7) return true; // Gateway status only; never a meter reading.
+  if (type==7) return version==1; // Gateway status only; never a meter reading.
   if (type==3) {
     const uint32_t a=u32le(p+9), b=u32le(p+13);
     if (version==0) { out.hasReading=out.hasReading2=true; out.reading=a/1000.0f; out.reading2=b/1000.0f; out.unit="kWh"; }
