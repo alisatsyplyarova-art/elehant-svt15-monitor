@@ -6,7 +6,7 @@ struct MeterPacket {
   uint32_t serial=0;
   String mac;
   int rssi=0;
-  bool hasReading=false, hasReading2=false, hasBattery=false, temperatureValid=false;
+  bool hasReading=false, hasReading2=false, hasBattery=false, temperatureValid=false;\n  bool hasHeatCarrier=false, heatTemperaturesValid=false;\n  float heatCarrierVolume=0, inletTemperatureC=0, outletTemperatureC=0;
   float reading=0, reading2=0, temperatureC=0;
   uint8_t batteryPercent=0;
   String unit;
