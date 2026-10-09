@@ -4,6 +4,7 @@
 #include <WebServer.h>
 #include <Preferences.h>
 #include <time.h>
+#include <math.h>
 #include <LittleFS.h>
 #include <time.h>
 
@@ -18,7 +19,7 @@ body{font:16px system-ui;margin:0;background:#101827;color:#edf2f7}header{paddin
 main{max-width:900px;margin:auto;padding:14px}.meter{background:#1b293d;border-radius:12px;padding:14px;margin:12px 0}
 h1{font-size:22px;margin:0}h2{font-size:18px;margin:0 0 8px}.muted{color:#aab8ca;font-size:13px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:12px}
-label{display:flex;align-items:center;gap:8px;background:#26364c;padding:9px;border-radius:8px}input{accent-color:#5eead4;width:18px;height:18px}
+label{display:flex;align-items:center;gap:8px;background:#26364c;padding:9px;border-radius:8px}input[type=text],input[type=password],input[type=number]{width:auto;height:auto;accent-color:initial}input{accent-color:#5eead4;width:18px;height:18px}
 button{padding:10px 14px;border:0;border-radius:8px;background:#0f766e;color:white;font-weight:600}
 </style></head><body><header><h1>Elehant SVT-15 Monitor</h1><div class="muted">Локальная сеть устройства</div></header><main>
 <p id="status">Загрузка данных…</p><section class="meter"><h2>Состояние и история</h2><p id="sys" class="muted">Загрузка…</p><a href="/history.csv" style="color:#5eead4">Скачать историю CSV</a><hr><h2 style="margin-top:14px">Wi-Fi роутер и время</h2><p class="muted">Точка доступа SVT-15 останется доступной. Пароль роутера хранится в настройках ESP32.</p><form id="netform" onsubmit="saveNetwork(event)"><p>Имя Wi-Fi (SSID)<br><input id="ssid" maxlength="32" autocomplete="off" style="width:95%;padding:10px"></p><p>Пароль Wi-Fi (оставьте пустым для открытой сети или чтобы очистить пароль)<br><input id="pass" type="password" maxlength="63" autocomplete="new-password" style="width:95%;padding:10px"></p><p>Часовой пояс относительно UTC, часов (например, 5.5)<br><input id="tz" type="number" min="-12" max="14" step="0.25" value="0" style="width:100px;padding:10px"></p><button type="submit">Сохранить настройки</button></form><p id="netmsg" class="muted"></p></section><div id="meters"></div></main>
@@ -67,7 +68,7 @@ static void handleHistory() {
 static void handleStatus() {
   time_t now=time(nullptr);
   struct tm tmNow{};
-  char timeText[32]="не синхронизировано";
+  char timeText[32]="not synchronized";
   if (now>1760000000 && localtime_r(&now,&tmNow)) strftime(timeText,sizeof(timeText),"%Y-%m-%d %H:%M:%S",&tmNow);
   String out="{\"time\":\""+String(timeText)+"\",\"uptime\":"+String(millis()/1000)+
     ",\"heap\":"+String(ESP.getFreeHeap())+",\"fsUsed\":"+String(LittleFS.usedBytes())+
@@ -209,7 +210,7 @@ void networkRestartAp(){
   if(!manager)return;
   WiFi.softAPdisconnect(true);
   delay(200);
-  WiFi.mode(WIFI_AP);
+  WiFi.mode(WiFi.status()==WL_CONNECTED?WIFI_AP_STA:WIFI_AP);
   WiFi.softAPConfig(IPAddress(192,168,4,1),IPAddress(192,168,4,1),IPAddress(255,255,255,0));
   WiFi.softAP(AP_DEFAULT_SSID,AP_DEFAULT_PASSWORD);
   Serial.printf("Wi-Fi AP restarted: %s\n",WiFi.softAPIP().toString().c_str());
