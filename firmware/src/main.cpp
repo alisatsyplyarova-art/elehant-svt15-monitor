@@ -6,6 +6,7 @@
 #include "ble_scanner.h"
 #include "meter_manager.h"
 #include "display_manager.h"
+#include "network_manager.h"
 
 ButtonManager buttons;
 MeterManager meterManager;
@@ -28,6 +29,7 @@ void setup() {
   Serial.printf("Saved meters: %u\n",meterManager.count());
   buttons.begin(HW.buttonUp, HW.buttonDown, HW.upPullup, HW.downPullup);
   displayBegin();
+  networkBegin(meterManager);
   bleScannerBegin();
 }
 void loop() {
@@ -67,11 +69,13 @@ void loop() {
       }
       break;
     case ButtonEvent::ApRecovery:
-      Serial.println(F("AP recovery requested; AP reset is not connected yet."));
+      Serial.println(F("AP recovery requested; restarting default access point."));
+      networkRestartAp();
       break;
     default: break;
   }
   if (selectedMeter>=meterManager.count()) selectedMeter=0;
+  networkLoop();
   bleScannerPoll();
   const time_t now=time(nullptr);
   meterManager.process(millis(),now);
