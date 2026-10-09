@@ -1,4 +1,5 @@
 #include "storage_manager.h"
+#include "config.h"
 #include <Preferences.h>
 #include <LittleFS.h>
 #include <time.h>
