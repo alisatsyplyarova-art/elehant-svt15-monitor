@@ -46,7 +46,7 @@ void MeterManager::observe(const MeterPacket& packet) {
       if (strncmp(merged.fields[j].key,packet.fields[i].key,sizeof(merged.fields[j].key))==0) { found=j; break; }
     }
     if (found>=0) merged.fields[found]=packet.fields[i];
-    else if (merged.fieldCount<12) merged.fields[merged.fieldCount++]=packet.fields[i];
+    else if (merged.fieldCount<36) merged.fields[merged.fieldCount++]=packet.fields[i];
   }
   merged.type=packet.type; merged.serial=packet.serial; merged.mac=packet.mac;
   merged.rssi=packet.rssi; merged.version=packet.version;
