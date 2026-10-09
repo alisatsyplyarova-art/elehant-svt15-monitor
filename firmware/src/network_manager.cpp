@@ -2,6 +2,8 @@
 #include "config.h"
 #include <WiFi.h>
 #include <WebServer.h>
+#include <LittleFS.h>
+#include <time.h>
 
 static WebServer server(80);
 static MeterManager* manager=nullptr;
@@ -17,7 +19,7 @@ h1{font-size:22px;margin:0}h2{font-size:18px;margin:0 0 8px}.muted{color:#aab8ca
 label{display:flex;align-items:center;gap:8px;background:#26364c;padding:9px;border-radius:8px}input{accent-color:#5eead4;width:18px;height:18px}
 button{padding:10px 14px;border:0;border-radius:8px;background:#0f766e;color:white;font-weight:600}
 </style></head><body><header><h1>Elehant SVT-15 Monitor</h1><div class="muted">Локальная сеть устройства</div></header><main>
-<p id="status">Загрузка данных…</p><div id="meters"></div></main>
+<p id="status">Загрузка данных…</p><section class="meter"><h2>Состояние и история</h2><p id="sys" class="muted">Загрузка…</p><a href="/history.csv" style="color:#5eead4">Скачать историю CSV</a></section><div id="meters"></div></main>
 <script>
 const flags=['active','collect','history','lcd','web','telegram','totals','calculator','alarms'];
 const labels=['Активен','Сбор данных','История','Экран','WEB','Telegram','Итоги','Калькулятор','Тревоги'];
@@ -25,7 +27,8 @@ async function refresh(){try{let r=await fetch('/api/meters');if(!r.ok)throw Err
 document.getElementById('meters').innerHTML=d.meters.map((m,i)=>'<section class="meter"><h2>'+m.serial+' · '+m.typeName+'</h2><div class="muted">Модель '+m.model+' · '+m.rssi+' dBm · '+(m.battery===null?'батарея —':('батарея '+m.battery+'%'))+'</div><p>'+m.readings.map(x=>x.key+': '+x.value+' '+x.unit).join('<br>')+'</p><div class="grid">'+flags.map((f,j)=>'<label><input type="checkbox" '+((m.flags&(1<<j))?'checked':'')+' onchange="setFlag('+i+',\''+f+'\',this.checked)"><span>'+labels[j]+'</span></label>').join('')+'</div></section>').join('')||'<section class="meter">Пока нет счётчиков. Ожидается BLE-реклама.</section>';
 }catch(e){document.getElementById('status').textContent='Ошибка: '+e.message}}
 async function setFlag(i,f,v){try{let r=await fetch('/api/flag?index='+i+'&flag='+f+'&value='+(v?1:0),{method:'POST'});if(!r.ok)throw Error('HTTP '+r.status);refresh()}catch(e){alert('Не удалось сохранить настройку: '+e.message);refresh()}}
-refresh();setInterval(refresh,5000);
+async function status(){try{let r=await fetch('/api/status');let d=await r.json();document.getElementById('sys').textContent='Время: '+d.time+' · uptime '+d.uptime+' с · свободная RAM '+d.heap+' байт · LittleFS '+d.fsUsed+'/'+d.fsTotal+' байт · клиентов Wi-Fi '+d.clients;}catch(e){}}
+refresh();status();setInterval(refresh,5000);setInterval(status,15000);
 </script></body></html>)HTML";
 
 static uint16_t bitForFlag(const String& name) {
@@ -45,6 +48,29 @@ static String jsonEscape(const String& s) {
   for(size_t i=0;i<s.length();++i){char c=s[i]; if(c=='"'||c=='\\')out+='\\'; if((uint8_t)c>=0x20)out+=c;}
   return out;
 }
+
+static void handleHistory() {
+  if (!LittleFS.exists("/history.csv")) {
+    server.send(404,"text/plain; charset=utf-8","История пока пуста");
+    return;
+  }
+  File file=LittleFS.open("/history.csv",FILE_READ);
+  if (!file) { server.send(500,"text/plain; charset=utf-8","Не удалось открыть историю"); return; }
+  server.sendHeader("Content-Disposition","attachment; filename=svt15-history.csv");
+  server.streamFile(file,"text/csv; charset=utf-8");
+  file.close();
+}
+static void handleStatus() {
+  time_t now=time(nullptr);
+  struct tm tmNow{};
+  char timeText[32]="не синхронизировано";
+  if (now>1760000000 && localtime_r(&now,&tmNow)) strftime(timeText,sizeof(timeText),"%Y-%m-%d %H:%M:%S",&tmNow);
+  String out="{\"time\":\""+String(timeText)+"\",\"uptime\":"+String(millis()/1000)+
+    ",\"heap\":"+String(ESP.getFreeHeap())+",\"fsUsed\":"+String(LittleFS.usedBytes())+
+    ",\"fsTotal\":"+String(LittleFS.totalBytes())+",\"clients\":"+String(WiFi.softAPgetStationNum())+"}";
+  server.send(200,"application/json; charset=utf-8",out);
+}
+
 static void handleRoot(){server.send_P(200,"text/html; charset=utf-8",PAGE);}
 static void handleMeters(){
   if(!manager){server.send(503,"application/json","{\"error\":\"not_ready\"}");return;}
@@ -92,6 +118,8 @@ void networkBegin(MeterManager& meters){
   const bool ok=WiFi.softAP(AP_DEFAULT_SSID,AP_DEFAULT_PASSWORD);
   Serial.printf("Wi-Fi AP %s: %s, IP=%s\n",AP_DEFAULT_SSID,ok?"started":"FAILED",WiFi.softAPIP().toString().c_str());
   server.on("/",HTTP_GET,handleRoot);
+  server.on("/history.csv",HTTP_GET,handleHistory);
+  server.on("/api/status",HTTP_GET,handleStatus);
   server.on("/api/meters",HTTP_GET,handleMeters);
   server.on("/api/flag",HTTP_POST,handleFlag);
   server.onNotFound([](){server.send(404,"application/json","{\"error\":\"not_found\"}");});
