@@ -8,7 +8,8 @@
 
 ButtonManager buttons;
 MeterManager meterManager;
-uint32_t lastStorageStatus=0;\nuint32_t lastPruneAt=0;
+uint32_t lastStorageStatus=0;
+uint32_t lastPruneAt=0;
 
 void setup() {
   Serial.begin(115200);
@@ -37,7 +38,11 @@ void loop() {
   }
   bleScannerPoll();
   const time_t now=time(nullptr);
-  meterManager.process(millis(),now);\n  if (now>1760000000 && millis()-lastPruneAt>86400000UL) {\n    meterManager.storage().pruneHistory(now,HISTORY_RETENTION_DAYS);\n    lastPruneAt=millis();\n  }
+  meterManager.process(millis(),now);
+  if (now>1760000000 && millis()-lastPruneAt>86400000UL) {
+    meterManager.storage().pruneHistory(now,HISTORY_RETENTION_DAYS);
+    lastPruneAt=millis();
+  }
   if (millis()-lastStorageStatus>60000UL) {
     lastStorageStatus=millis();
     Serial.printf("Meters: %u; LittleFS: %llu/%llu bytes\n",meterManager.count(),
