@@ -112,7 +112,7 @@ bool parseElehantPacket(const uint8_t* p, size_t n, const char* mac, int rssi, M
   }
 
   if (version==1) {
-    uint32_t raw=u32le(p+9);
+    float raw=(float)u32le(p+9);
     if (p[0]&0x04) raw += (p[2]&0x0F)/10.0f;
     out.reading=raw/10000.0f; out.hasReading=true;
     out.unit=(type==4?"GJ":"m3");
