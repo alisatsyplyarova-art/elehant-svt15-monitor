@@ -18,7 +18,7 @@ struct MeterPacket {
   float reading=0, reading2=0, temperatureC=0;
   uint8_t batteryPercent=0;
   String unit;
-  MeasurementField fields[12]{};
+  MeasurementField fields[36]{};
   uint8_t fieldCount=0;
 };
 
