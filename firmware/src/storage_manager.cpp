@@ -39,9 +39,11 @@ bool StorageManager::saveMeters(const MeterConfig* meters, uint8_t count) {
 }
 bool StorageManager::appendHistory(const MeterPacket& packet, time_t timestamp) {
   if (!ready_ || timestamp<1760000000) return false;
+  const bool newFile=!LittleFS.exists(HISTORY_PATH);
   File f=LittleFS.open(HISTORY_PATH,FILE_APPEND);
   if (!f) return false;
   bool ok=true;
+  if (newFile) ok &= f.println("epoch;serial;type;model;mac;version;measurement_fields")>0;
   ok &= f.print((long)timestamp)>0; ok &= f.print(';')>0;
   ok &= f.print(packet.serial)>0; ok &= f.print(';')>0;
   ok &= f.print(packet.type)>0; ok &= f.print(';')>0;
