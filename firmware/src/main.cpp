@@ -53,7 +53,7 @@ void loop() {
         const MeterConfig* cfg=meterManager.configAt(selectedMeter);
         const bool enabled=cfg && (cfg->flags&editableFlags[selectedFlag]);
         meterManager.setFlagAt(selectedMeter,editableFlags[selectedFlag],!enabled);
-        Serial.printf("Meter %u: %s=%s\\n",selectedMeter+1,flagNames[selectedFlag],enabled?"OFF":"ON");
+        Serial.printf("Meter %u: %s=%s\n",selectedMeter+1,flagNames[selectedFlag],enabled?"OFF":"ON");
       }
       break;
     case ButtonEvent::BothLong:
