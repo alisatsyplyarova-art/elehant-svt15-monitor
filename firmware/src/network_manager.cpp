@@ -28,18 +28,6 @@ async function setFlag(i,f,v){try{let r=await fetch('/api/flag?index='+i+'&flag=
 refresh();setInterval(refresh,5000);
 </script></body></html>)HTML";
 
-static const char* flagNameToBit(const String& name) {
-  if(name=="active") return "active";
-  if(name=="collect") return "collect";
-  if(name=="history") return "history";
-  if(name=="lcd") return "lcd";
-  if(name=="web") return "web";
-  if(name=="telegram") return "telegram";
-  if(name=="totals") return "totals";
-  if(name=="calculator") return "calculator";
-  if(name=="alarms") return "alarms";
-  return nullptr;
-}
 static uint16_t bitForFlag(const String& name) {
   if(name=="active") return METER_ACTIVE;
   if(name=="collect") return METER_COLLECT;
@@ -71,7 +59,7 @@ static void handleMeters(){
     out+=",\"readings\":[";
     if(p){
       bool comma=false;
-      for(uint8_t j=0;j<p->fieldCount&&j<36;++j){
+      for(uint8_t j=0;j<p->fieldCount&&j<12;++j){
         if(comma)out+=",";
         const MeasurementField& f=p->fields[j];
         out+="{\"key\":\""+jsonEscape(String(f.key))+"\",\"value\":"+String(f.value,4)+",\"unit\":\""+jsonEscape(String(f.unit))+"\"}";
@@ -82,7 +70,6 @@ static void handleMeters(){
       }
     }
     out+="]}";
-    if(out.length()>7000)break;
   }
   out+="]}";
   server.send(200,"application/json; charset=utf-8",out);
