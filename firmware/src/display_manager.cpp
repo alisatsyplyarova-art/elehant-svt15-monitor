@@ -65,7 +65,10 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
   } else {
     screen.print(F("#")); screen.print(selectedMeter+1); screen.print('/'); screen.println(count);
     screen.print(F("SN:")); screen.println(cfg?cfg->serial:0);
-    if (configMode) {
+    if (!(cfg->flags&METER_LCD) && !configMode) {
+      screen.println(F("Display disabled for this meter"));
+      screen.println(F("BOTH: settings"));
+    } else if (configMode) {
       screen.print(F(">")); screen.println(flagLabels[flag]);
       screen.print(F("Value: ")); screen.println(enabled?F("ON"):F("OFF"));
       screen.println(F("UP/DN choose"));
@@ -94,7 +97,10 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
     screen.println();
     screen.print(F("Selected: ")); screen.print(selectedMeter+1); screen.print('/'); screen.println(count);
     screen.print(F("Serial: ")); screen.println(cfg?cfg->serial:0);
-    if (configMode) {
+    if (!(cfg->flags&METER_LCD) && !configMode) {
+      screen.println(F("Display disabled for this meter"));
+      screen.println(F("BOTH: settings"));
+    } else if (configMode) {
       screen.println(F("METER SETTINGS"));
       screen.print(F("> ")); screen.println(flagLabels[flag]);
       screen.print(F("State: ")); screen.println(enabled?F("ON"):F("OFF"));
