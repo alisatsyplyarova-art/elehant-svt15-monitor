@@ -43,7 +43,7 @@ static uint8_t batteryPercent(uint8_t raw, uint8_t boundary) {
   return raw>100 ? 100 : raw;
 }
 static void addField(MeterPacket& out, const char* key, float value, const char* unit) {
-  if (out.fieldCount>=12) return;
+  if (out.fieldCount>=36) return;
   MeasurementField& f=out.fields[out.fieldCount++];
   snprintf(f.key,sizeof(f.key),"%s",key);
   snprintf(f.unit,sizeof(f.unit),"%s",unit);
