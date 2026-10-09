@@ -6,14 +6,14 @@ void ButtonManager::begin(int upPin, int downPin, bool upPullup, bool downPullup
   pinMode(upPin_, upPullup_ ? INPUT_PULLUP : INPUT);
   pinMode(downPin_, downPullup_ ? INPUT_PULLUP : INPUT);
   startupAt_=millis();
-  upRaw_=upStable_=(digitalRead(upPin_) == (upPullup_ ? LOW : HIGH));
-  downRaw_=downStable_=(digitalRead(downPin_) == (downPullup_ ? LOW : HIGH));
+  upRaw_=upStable_=(digitalRead(upPin_) == LOW);
+  downRaw_=downStable_=(digitalRead(downPin_) == LOW);
   upChangedAt_=downChangedAt_=startupAt_;
 }
 
 ButtonEvent ButtonManager::update(uint32_t now) {
-  bool u = digitalRead(upPin_) == (upPullup_ ? LOW : HIGH);
-  bool d = digitalRead(downPin_) == (downPullup_ ? LOW : HIGH);
+  bool u = digitalRead(upPin_) == LOW;
+  bool d = digitalRead(downPin_) == LOW;
   if (u != upRaw_) { upRaw_=u; upChangedAt_=now; }
   if (d != downRaw_) { downRaw_=d; downChangedAt_=now; }
   if (now-upChangedAt_ >= BUTTON_DEBOUNCE_MS) upStable_=upRaw_;
