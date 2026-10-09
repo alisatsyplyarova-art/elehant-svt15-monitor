@@ -1,5 +1,7 @@
 #include "protocol_parser.h"
 #include <math.h>
+#include <cstring>
+#include <cstdio>
 
 static uint16_t u16le(const uint8_t* p) { return (uint16_t)p[0] | ((uint16_t)p[1] << 8); }
 static uint32_t u32le(const uint8_t* p) { return (uint32_t)p[0] | ((uint32_t)p[1]<<8) | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24); }
@@ -14,7 +16,7 @@ static uint32_t snFromMac(const char* mac, bool& ok, uint8_t& prefix, uint8_t& m
 }
 static bool knownModel(uint8_t type, uint8_t model) {
   switch(type) {
-    case 1: return model<=5 || (model>=16 && model<=20) || (model>=32 && model<=36) ||
+    case 1: return (model>=1 && model<=5) || (model>=16 && model<=20) || (model>=32 && model<=36) ||
                    (model>=48 && model<=52) || (model>=64 && model<=68) || (model>=80 && model<=84);
     case 2: return model>=1 && model<=18;
     case 3: return model==1 || model==4 || model==5 || model==7;
