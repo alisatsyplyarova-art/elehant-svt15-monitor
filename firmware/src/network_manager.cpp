@@ -72,7 +72,7 @@ static void handleStatus() {
   if (now>1760000000 && localtime_r(&now,&tmNow)) strftime(timeText,sizeof(timeText),"%Y-%m-%d %H:%M:%S",&tmNow);
   String out="{\"time\":\""+String(timeText)+"\",\"uptime\":"+String(millis()/1000)+
     ",\"heap\":"+String(ESP.getFreeHeap())+",\"fsUsed\":"+String(LittleFS.usedBytes())+
-    ",\"fsTotal\":"+String(LittleFS.totalBytes())+",\"clients\":"+String(WiFi.softAPgetStationNum())+"}";
+    ",\"fsTotal\":"+String(LittleFS.totalBytes())+",\"clients\":"+String(WiFi.softAPgetStationNum())+",\"sta\":"+String(WiFi.status()==WL_CONNECTED?"true":"false")+",\"staIp\":\""+WiFi.localIP().toString()+"\"}";
   server.send(200,"application/json; charset=utf-8",out);
 }
 
