@@ -29,8 +29,8 @@ static const HardwareProfile HW = {
 };
 #else
 static const HardwareProfile HW = {
-  "ESP32-C3 + LCD5110 (user pin map; verify PCB)",
-  1, 5, true, true, 3, 10, 7, 6, 11, -1, -1, false
+  "ESP32-C3 + LCD5110 (user pin map; verify backlight wiring)",
+  1, 5, true, true, 3, 10, 7, 6, 11, 4, -1, false
 };
 #endif
 
