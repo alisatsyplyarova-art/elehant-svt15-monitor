@@ -16,16 +16,6 @@ static bool started=false;
 static String otaPassword;
 static bool otaUploadOk=false;
 static bool otaUploadAuthorized=false;
-struct AlarmSettings { uint8_t batteryLow=20; uint16_t staleMinutes=15; bool lowEnabled=false, highEnabled=false; float lowValue=0, highValue=0; };
-static AlarmSettings alarmSettings;
-static void loadAlarmSettings() {
-  Preferences p; if (!p.begin("svt15alarm",true)) return;
-  alarmSettings.batteryLow=(uint8_t)constrain(p.getUInt("battery",20),0,100);
-  alarmSettings.staleMinutes=(uint16_t)constrain(p.getUInt("stale",15),1,1440);
-  alarmSettings.lowEnabled=p.getBool("lowOn",false); alarmSettings.highEnabled=p.getBool("highOn",false);
-  alarmSettings.lowValue=p.getFloat("low",0); alarmSettings.highValue=p.getFloat("high",0); p.end();
-}
-
 
 static void loadOtaPassword() {
   Preferences p;
