@@ -79,6 +79,7 @@ void loop() {
   bleScannerPoll();
   const time_t now=time(nullptr);
   meterManager.process(millis(),now);
+  displaySetAlarm(networkAlarmActive(millis()));
   displayService(millis());
   displayRender(meterManager,millis(),selectedMeter,configMode,selectedFlag);
   if (now>1760000000 && millis()-lastPruneAt>86400000UL) {
