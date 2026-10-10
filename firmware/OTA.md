@@ -29,3 +29,19 @@ board before relying on OTA in production.
 
 OTA support is firmware groundwork and has not yet been physically tested on
 the target board. Never flash a binary built for a different board profile.
+
+## LCD5110 backlight behavior
+
+The firmware profile uses GPIO4 (contact 28 in the supplied preliminary map) as a
+backlight control signal. The first button event while the display is asleep
+wakes the backlight for five minutes and is consumed, so it does not change the
+selected meter. Further button activity extends the five-minute timeout.
+
+**Hardware check required:** if the LCD5110 backlight input is still tied directly
+to 3.3 V, firmware cannot turn it off. Route the backlight through a suitable
+transistor/MOSFET controlled by GPIO4; do not drive the LED current directly from
+the ESP32 pin. GPIO4 must not also be connected to another active peripheral.
+
+The display module exposes an alarm-blink interface, but alarm sources and
+thresholds are not yet configured. No battery, stale-packet, or reading threshold
+is assumed by the current firmware.
