@@ -35,6 +35,12 @@ static void loadOtaPassword() {
     generated[16]='\0';
     otaPassword=generated;
     p.putString("password", otaPassword);
+    if (p.getString("password", "").length()!=16) {
+      otaPassword="";
+      Serial.println(F("OTA disabled: failed to persist update password."));
+      p.end();
+      return;
+    }
     Serial.println(F("Generated a new OTA password; it is printed below."));
   }
   p.end();
@@ -57,7 +63,7 @@ static void handleOtaPage() {
 }
 static void handleOtaUpload() {
   HTTPUpload& upload=server.upload();
-  if (!server.authenticate("admin", otaPassword.c_str())) {
+  if (otaPassword.length()!=16 || !server.authenticate("admin", otaPassword.c_str())) {
     otaUploadAuthorized=false;
     otaUploadOk=false;
     return;
