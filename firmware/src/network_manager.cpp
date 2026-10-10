@@ -1,4 +1,5 @@
 #include "network_manager.h"
+#include "alarm_manager.h"
 #include "config.h"
 #include <WiFi.h>
 #include <WebServer.h>
@@ -103,6 +104,40 @@ static void handleOtaResult() {
   server.send(200,"text/plain; charset=utf-8","Прошивка записана. Устройство перезапускается...");
   delay(400);
   ESP.restart();
+}
+
+static void handleGetAlarms() {
+  AlarmSettings s=alarmSettingsGet();
+  String out="{\"battery\":"+String(s.batteryLow)+",\"stale\":"+String(s.staleMinutes)+
+    ",\"lowEnabled\":"+(s.lowEnabled?String("true"):String("false"))+
+    ",\"low\":"+String(s.lowValue,4)+",\"highEnabled\":"+(s.highEnabled?String("true"):String("false"))+
+    ",\"high\":"+String(s.highValue,4)+"}";
+  server.send(200,"application/json; charset=utf-8",out);
+}
+static void handleSetAlarms() {
+  AlarmSettings s;
+  if (!server.hasArg("battery") || !server.hasArg("stale") || !server.hasArg("lowEnabled") ||
+      !server.hasArg("low") || !server.hasArg("highEnabled") || !server.hasArg("high")) {
+    server.send(400,"application/json","{\"error\":\"missing_argument\"}"); return;
+  }
+  int battery=server.arg("battery").toInt(), stale=server.arg("stale").toInt();
+  String lo=server.arg("low"), hi=server.arg("high");
+  s.batteryLow=(uint8_t)constrain(battery,0,100);
+  s.staleMinutes=(uint16_t)constrain(stale,1,1440);
+  s.lowEnabled=server.arg("lowEnabled")=="1";
+  s.highEnabled=server.arg("highEnabled")=="1";
+  s.lowValue=lo.toFloat(); s.highValue=hi.toFloat();
+  if (battery<0 || battery>100 || stale<1 || stale>1440 ||
+      (s.lowEnabled && !lo.length()) || (s.highEnabled && !hi.length()) ||
+      (s.lowEnabled && s.highEnabled && s.lowValue>=s.highValue) ||
+      !alarmSettingsSave(s)) {
+    server.send(400,"application/json","{\"error\":\"invalid_settings_or_storage_failure\"}"); return;
+  }
+  server.send(200,"application/json","{\"ok\":true}");
+}
+bool networkAlarmActive(uint32_t nowMillis) {
+  if (!manager) return false;
+  return alarmAnyActive(*manager,nowMillis,alarmSettingsGet());
 }
 
 static const char PAGE[] PROGMEM = R"HTML(
