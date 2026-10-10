@@ -5,3 +5,4 @@
 void networkBegin(MeterManager& meters);
 void networkLoop();
 void networkRestartAp();
+bool networkAlarmActive(uint32_t nowMillis);
