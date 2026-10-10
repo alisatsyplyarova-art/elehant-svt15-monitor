@@ -33,8 +33,8 @@ void setup() {
   bleScannerBegin();
 }
 void loop() {
-  const ButtonEvent event=buttons.update(millis());
-  if (event!=ButtonEvent::None) displayWake();
+  ButtonEvent event=buttons.update(millis());
+  if (event!=ButtonEvent::None && event!=ButtonEvent::ApRecovery && displayButtonActivity(millis())) event=ButtonEvent::None;
   switch (event) {
     case ButtonEvent::UpShort:
       if (configMode) selectedFlag=(selectedFlag+8)%9;
@@ -79,6 +79,7 @@ void loop() {
   bleScannerPoll();
   const time_t now=time(nullptr);
   meterManager.process(millis(),now);
+  displayService(millis());
   displayRender(meterManager,millis(),selectedMeter,configMode,selectedFlag);
   if (now>1760000000 && millis()-lastPruneAt>86400000UL) {
     meterManager.storage().pruneHistory(now,HISTORY_RETENTION_DAYS);
