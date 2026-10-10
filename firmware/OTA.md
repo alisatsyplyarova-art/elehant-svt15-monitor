@@ -45,3 +45,14 @@ the ESP32 pin. GPIO4 must not also be connected to another active peripheral.
 The display module exposes an alarm-blink interface, but alarm sources and
 thresholds are not yet configured. No battery, stale-packet, or reading threshold
 is assumed by the current firmware.
+
+## Alarm defaults and configuration
+
+The web page has persistent alarm settings (saved in ESP32 Preferences):
+- low battery: **20% or less**;
+- missing BLE packets: **15 minutes**;
+- reading lower/upper limits: **disabled by default**.
+
+Only meters with both **Active** and **Alarms** enabled participate. Battery and missing-packet alarms can be configured for all meters. Optional reading limits currently apply to the primary numeric `reading` field on all meters; enable them only when those meters use compatible units and scales. For mixed gas/water/electricity meters, leave numeric limits disabled until per-meter limits are implemented. Any active alarm blinks the display backlight.
+
+These are provisional commissioning defaults, not validated safety limits. Verify battery reporting and BLE advertisement intervals on the actual meter models before relying on them.
