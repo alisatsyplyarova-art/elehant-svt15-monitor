@@ -17,10 +17,11 @@ public:
   uint8_t count() const { return count_; }
   const MeterConfig* configAt(uint8_t i) const;
   const MeterPacket* latestAt(uint8_t i) const;
+  uint32_t lastSeenMillisAt(uint8_t i) const;
   bool setFlagAt(uint8_t i, uint16_t flag, bool enabled);
   StorageManager& storage() { return storage_; }
 private:
-  struct Slot { MeterConfig config; MeterPacket latest; bool seen=false; };
+  struct Slot { MeterConfig config; MeterPacket latest; bool seen=false; uint32_t lastSeenMillis=0; };
   Slot slots_[MAX_METERS];
   uint8_t count_=0;
   bool dirty_=false;
