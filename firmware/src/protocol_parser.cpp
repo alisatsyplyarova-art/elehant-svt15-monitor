@@ -149,7 +149,8 @@ bool parseElehantPacket(const uint8_t* p, size_t n, const char* mac, int rssi, M
     if (out.temperatureValid) addField(out,"temperature",out.temperatureC,"C");
     return true;
   }
-  if (version==9) {
+  // Version 9 carries heat-carrier volume and temperatures; reject it for non-heat meters.
+  if (version==9 && type==4) {
     out.hasHeatCarrier=true;
     out.heatCarrierVolume=u32le(p+9)/10000.0f;
     out.inletTemperatureC=u16le(p+13)/100.0f;
