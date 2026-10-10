@@ -13,6 +13,19 @@
 
 static uint32_t lastDrawAt=0;
 static bool initialized=false;
+static uint32_t backlightDeadline=0;
+static uint32_t lastAlarmBlink=0;
+static bool displayAwake=false;
+static bool alarmActive=false;
+static bool alarmBlinkOn=false;
+
+static void setBacklight(bool on) {
+#if defined(DISPLAY_LCD5110) || defined(DISPLAY_ST7789)
+  if (HW.displayBacklight>=0) digitalWrite(HW.displayBacklight,on?HIGH:LOW);
+#else
+  (void)on;
+#endif
+}
 static const uint16_t flagBits[]={METER_ACTIVE,METER_COLLECT,METER_HISTORY,METER_LCD,METER_WEB,METER_TELEGRAM,METER_TOTALS,METER_CALCULATOR,METER_ALARMS};
 static const char* flagLabels[]={ "Active","Collect","History","LCD","Web","Telegram","Totals","Calculator","Alarms" };
 
@@ -25,7 +38,7 @@ void displayBegin() {
   screen.setTextColor(BLACK);
   if (HW.displayBacklight>=0) {
     pinMode(HW.displayBacklight,OUTPUT);
-    digitalWrite(HW.displayBacklight,HIGH);
+    digitalWrite(HW.displayBacklight,LOW);
   }
 #elif defined(DISPLAY_ST7789)
   screen.init();
@@ -39,11 +52,16 @@ void displayBegin() {
   }
   if (HW.displayBacklight>=0) {
     pinMode(HW.displayBacklight,OUTPUT);
-    digitalWrite(HW.displayBacklight,HIGH);
+    digitalWrite(HW.displayBacklight,LOW);
   }
 #endif
   initialized=true;
   lastDrawAt=0;
+  backlightDeadline=0;
+  displayAwake=false;
+  alarmActive=false;
+  alarmBlinkOn=false;
+  setBacklight(false);
 }
 
 void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selectedMeter, bool configMode, uint8_t selectedFlag) {
@@ -132,18 +150,51 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
 }
 
 void displayWake() {
-#if defined(DISPLAY_LCD5110)
-  if (HW.displayBacklight>=0) digitalWrite(HW.displayBacklight,HIGH);
-#elif defined(DISPLAY_ST7789)
+  displayAwake=true;
+  backlightDeadline=millis()+BACKLIGHT_TIMEOUT_MS;
+  setBacklight(true);
+#if defined(DISPLAY_ST7789)
   if (HW.displayPower>=0) digitalWrite(HW.displayPower,HIGH);
-  if (HW.displayBacklight>=0) digitalWrite(HW.displayBacklight,HIGH);
 #endif
 }
 
 void displaySleep() {
-#if defined(DISPLAY_LCD5110)
-  if (HW.displayBacklight>=0) digitalWrite(HW.displayBacklight,LOW);
-#elif defined(DISPLAY_ST7789)
-  if (HW.displayBacklight>=0) digitalWrite(HW.displayBacklight,LOW);
-#endif
+  displayAwake=false;
+  backlightDeadline=0;
+  if (!alarmActive) setBacklight(false);
+}
+
+bool displayButtonActivity(uint32_t nowMillis) {
+  const bool wasAwake=displayAwake && (int32_t)(backlightDeadline-nowMillis)>0;
+  displayAwake=true;
+  backlightDeadline=nowMillis+BACKLIGHT_TIMEOUT_MS;
+  if (!wasAwake) {
+    setBacklight(!alarmActive || alarmBlinkOn);
+    return true; // first press wakes the screen without changing selection
+  }
+  return false; // subsequent press extends timeout and keeps its normal action
+}
+
+void displaySetAlarm(bool active) {
+  if (alarmActive==active) return;
+  alarmActive=active;
+  lastAlarmBlink=millis();
+  alarmBlinkOn=active;
+  if (active) setBacklight(true);
+  else setBacklight(displayAwake && (int32_t)(backlightDeadline-millis())>0);
+}
+
+void displayService(uint32_t nowMillis) {
+  if (alarmActive) {
+    if (nowMillis-lastAlarmBlink>=500UL) {
+      lastAlarmBlink=nowMillis;
+      alarmBlinkOn=!alarmBlinkOn;
+      setBacklight(alarmBlinkOn);
+    }
+  } else if (!displayAwake || (int32_t)(nowMillis-backlightDeadline)>=0) {
+    displayAwake=false;
+    setBacklight(false);
+  } else {
+    setBacklight(true);
+  }
 }
