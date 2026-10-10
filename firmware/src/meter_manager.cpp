@@ -31,6 +31,7 @@ void MeterManager::observe(const MeterPacket& packet) {
     cfg.flags=0x01FF;
     slots_[idx].latest=packet;
     slots_[idx].seen=true;
+    slots_[idx].lastSeenMillis=millis();
     dirty_=true;
     Serial.printf("New meter discovered: SN=%lu type=%u model=%u (%u/%u)\n",
       (unsigned long)cfg.serial,cfg.type,cfg.model,count_,MAX_METERS);
@@ -70,6 +71,7 @@ void MeterManager::observe(const MeterPacket& packet) {
     dirty_=true;
   }
   slot.seen=true;
+  slot.lastSeenMillis=millis();
 }
 void MeterManager::process(uint32_t nowMillis, time_t nowEpoch) {
   if (dirty_ && nowMillis-lastSaveAt_>=2000) {
@@ -94,6 +96,7 @@ void MeterManager::process(uint32_t nowMillis, time_t nowEpoch) {
 }
 const MeterConfig* MeterManager::configAt(uint8_t i) const { return i<count_?&slots_[i].config:nullptr; }
 const MeterPacket* MeterManager::latestAt(uint8_t i) const { return i<count_ && slots_[i].seen?&slots_[i].latest:nullptr; }
+uint32_t MeterManager::lastSeenMillisAt(uint8_t i) const { return i<count_?slots_[i].lastSeenMillis:0; }
 bool MeterManager::setFlagAt(uint8_t i, uint16_t flag, bool enabled) {
   if (i>=count_) return false;
   const uint16_t before=slots_[i].config.flags;
