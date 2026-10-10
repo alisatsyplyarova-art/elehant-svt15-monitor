@@ -6,6 +6,7 @@
 #include <Preferences.h>
 #include <time.h>
 #include <math.h>
+#include <stdlib.h>
 #include <LittleFS.h>
 #include <Update.h>
 #include <esp_system.h>
@@ -106,6 +107,19 @@ static void handleOtaResult() {
   ESP.restart();
 }
 
+static bool parseStrictFloat(const String& text, float& value) {
+  if (!text.length()) return false;
+  char* end=nullptr;
+  value=strtof(text.c_str(),&end);
+  return end!=text.c_str() && end && *end=='\0' && isfinite(value);
+}
+static bool parseStrictInt(const String& text, long& value) {
+  if (!text.length()) return false;
+  char* end=nullptr;
+  value=strtol(text.c_str(),&end,10);
+  return end!=text.c_str() && end && *end=='\0';
+}
+
 static void handleGetAlarms() {
   AlarmSettings s=alarmSettingsGet();
   String out="{\"battery\":"+String(s.batteryLow)+",\"stale\":"+String(s.staleMinutes)+
@@ -120,18 +134,23 @@ static void handleSetAlarms() {
       !server.hasArg("low") || !server.hasArg("highEnabled") || !server.hasArg("high")) {
     server.send(400,"application/json","{\"error\":\"missing_argument\"}"); return;
   }
-  int battery=server.arg("battery").toInt(), stale=server.arg("stale").toInt();
+  long battery=0, stale=0;
   String lo=server.arg("low"), hi=server.arg("high");
-  s.batteryLow=(uint8_t)constrain(battery,0,100);
-  s.staleMinutes=(uint16_t)constrain(stale,1,1440);
-  s.lowEnabled=server.arg("lowEnabled")=="1";
-  s.highEnabled=server.arg("highEnabled")=="1";
-  s.lowValue=lo.toFloat(); s.highValue=hi.toFloat();
-  if (battery<0 || battery>100 || stale<1 || stale>1440 ||
-      (s.lowEnabled && !lo.length()) || (s.highEnabled && !hi.length()) ||
-      (s.lowEnabled && s.highEnabled && s.lowValue>=s.highValue) ||
-      !alarmSettingsSave(s)) {
-    server.send(400,"application/json","{\"error\":\"invalid_settings_or_storage_failure\"}"); return;
+  const String lowEnabledArg=server.arg("lowEnabled"), highEnabledArg=server.arg("highEnabled");
+  const bool integersOk=parseStrictInt(server.arg("battery"),battery) && parseStrictInt(server.arg("stale"),stale);
+  const bool flagsOk=(lowEnabledArg=="0" || lowEnabledArg=="1") && (highEnabledArg=="0" || highEnabledArg=="1");
+  s.lowEnabled=lowEnabledArg=="1";
+  s.highEnabled=highEnabledArg=="1";
+  const bool lowOk=!s.lowEnabled || parseStrictFloat(lo,s.lowValue);
+  const bool highOk=!s.highEnabled || parseStrictFloat(hi,s.highValue);
+  if (!integersOk || !flagsOk || battery<0 || battery>100 || stale<1 || stale>1440 ||
+      !lowOk || !highOk || (s.lowEnabled && s.highEnabled && s.lowValue>=s.highValue)) {
+    server.send(400,"application/json","{\"error\":\"invalid_settings\"}"); return;
+  }
+  s.batteryLow=(uint8_t)battery;
+  s.staleMinutes=(uint16_t)stale;
+  if (!alarmSettingsSave(s)) {
+    server.send(500,"application/json","{\"error\":\"storage_failed\"}"); return;
   }
   server.send(200,"application/json","{\"ok\":true}");
 }
@@ -243,9 +262,10 @@ static void handleSetNetwork() {
   if(ssid.length()>32 || pass.length()>63 || !tzArg.length()) {
     server.send(400,"application/json","{\"error\":\"invalid_settings\"}"); return;
   }
-  float tz=tzArg.toFloat();
-  if(tz < -12.0f || tz > 14.0f) {
-    server.send(400,"application/json","{\"error\":\"timezone_out_of_range\"}"); return;
+  float tz=0.0f;
+  if(!parseStrictFloat(tzArg,tz) || tz < -12.0f || tz > 14.0f ||
+     fabsf(tz*4.0f-roundf(tz*4.0f))>0.001f) {
+    server.send(400,"application/json","{\"error\":\"invalid_timezone\"}"); return;
   }
   Preferences p;
   if(!p.begin("svt15net",false)) { server.send(500,"application/json","{\"error\":\"storage_failed\"}"); return; }
