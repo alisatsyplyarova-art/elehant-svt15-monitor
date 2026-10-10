@@ -29,14 +29,16 @@ static const HardwareProfile HW = {
 };
 #else
 static const HardwareProfile HW = {
-  "ESP32-C3 + LCD5110 example",
-  1, 5, true, true, 4, 6, 7, 2, 3, 10, -1, false
+  "ESP32-C3 + LCD5110 (user pin map; verify PCB)",
+  1, 5, true, true, 3, 10, 7, 6, 11, -1, -1, false
 };
 #endif
 
-// ESP32-C3 example: GPIO0 is BOOT/strap; GPIO1=UP; GPIO2=LCD DC;
-// GPIO3=LCD RST; GPIO4=LCD CLK; GPIO5=DOWN; GPIO6=LCD DIN;
-// GPIO7=LCD CS; GPIO10=backlight. Check the exact C3 module.
+// ESP32-C3 + Nokia 5110 based on the user-provided 32-pin map:
+// UP=GPIO1, DOWN=GPIO5; LCD SCLK=GPIO3, MOSI/DIN=GPIO10,
+// DC=GPIO6, CS=GPIO7, RST=GPIO11. Backlight is tied to 3V3,
+// so displayBacklight=-1 (not GPIO-controlled). Verify power pins on PCB.
+// GPIO0/8/9 may be boot-strapping pins; GPIO18/19 are USB on ESP32-C3.
 // Classic T-Display: GPIO0=BTN1/BOOT; GPIO35=BTN2 (input-only, no internal pull-up);
 // display GPIO18=SCLK, 19=MOSI, 5=CS, 16=DC, 23=RST, 4=BL.
 // T-Display S3 typical pins: SCLK=18, MOSI=17, CS=6, DC=7, RST=5,
