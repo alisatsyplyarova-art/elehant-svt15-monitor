@@ -38,6 +38,8 @@ static const HardwareProfile HW = {
 // UP=GPIO1, DOWN=GPIO5; LCD SCLK=GPIO3, MOSI/DIN=GPIO10,
 // DC=GPIO6, CS=GPIO7, RST=GPIO11. Backlight is tied to 3V3,
 // so displayBacklight=-1 (not GPIO-controlled). Verify power pins on PCB.
+// GPIO4 (contact 28 in the supplied preliminary map) is used for backlight control;
+// confirm it is free and route BL through a suitable transistor/MOSFET if BL is tied to 3V3.
 // GPIO0/8/9 may be boot-strapping pins; GPIO18/19 are USB on ESP32-C3.
 // Classic T-Display: GPIO0=BTN1/BOOT; GPIO35=BTN2 (input-only, no internal pull-up);
 // display GPIO18=SCLK, 19=MOSI, 5=CS, 16=DC, 23=RST, 4=BL.
