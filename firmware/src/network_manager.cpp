@@ -331,11 +331,14 @@ void networkBegin(MeterManager& meters){
   server.on("/api/status",HTTP_GET,handleStatus);
   server.on("/api/network",HTTP_GET,handleGetNetwork);
   server.on("/api/network",HTTP_POST,handleSetNetwork);
+  server.on("/api/alarms",HTTP_GET,handleGetAlarms);
+  server.on("/api/alarms",HTTP_POST,handleSetAlarms);
   server.on("/api/meters",HTTP_GET,handleMeters);
   server.on("/api/flag",HTTP_POST,handleFlag);
   server.onNotFound([](){server.send(404,"application/json","{\"error\":\"not_found\"}");});
   server.begin();
   loadOtaPassword();
+  alarmSettingsLoad();
   loadNetworkSettings();
   started=true;
 }
