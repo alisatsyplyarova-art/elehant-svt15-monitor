@@ -2,8 +2,8 @@
 #include <Arduino.h>
 
 struct MeasurementField {
-  char key[28]{};
-  char unit[12]{};
+  char key[24]{};
+  char unit[8]{};
   float value=0;
 };
 
