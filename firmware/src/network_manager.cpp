@@ -46,8 +46,13 @@ static void loadOtaPassword() {
   p.end();
   Serial.printf("OTA update: http://192.168.4.1/update  username=admin  password=%s\n", otaPassword.c_str());
 }
+static bool otaClientOnAccessPoint() {
+  const IPAddress remote=server.client().remoteIP();
+  return remote[0]==192 && remote[1]==168 && remote[2]==4;
+}
 static bool authorizeOta() {
-  if (otaPassword.length() && server.authenticate("admin", otaPassword.c_str())) return true;
+  if (otaPassword.length()==16 && otaClientOnAccessPoint() &&
+      server.authenticate("admin", otaPassword.c_str())) return true;
   server.requestAuthentication();
   return false;
 }
@@ -63,7 +68,7 @@ static void handleOtaPage() {
 }
 static void handleOtaUpload() {
   HTTPUpload& upload=server.upload();
-  if (otaPassword.length()!=16 || !server.authenticate("admin", otaPassword.c_str())) {
+  if (otaPassword.length()!=16 || !otaClientOnAccessPoint() || !server.authenticate("admin", otaPassword.c_str())) {
     otaUploadAuthorized=false;
     otaUploadOk=false;
     return;
