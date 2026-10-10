@@ -32,13 +32,13 @@ static void loadOtaPassword() {
       for (int nibble=0; nibble<8; ++nibble)
         generated[block*8+nibble]=hex[(value >> (28-4*nibble)) & 0x0F];
     }
-    generated[16]='\\0';
+    generated[16]='\0';
     otaPassword=generated;
     p.putString("password", otaPassword);
     Serial.println(F("Generated a new OTA password; it is printed below."));
   }
   p.end();
-  Serial.printf("OTA update: http://192.168.4.1/update  username=admin  password=%s\\n", otaPassword.c_str());
+  Serial.printf("OTA update: http://192.168.4.1/update  username=admin  password=%s\n", otaPassword.c_str());
 }
 static bool authorizeOta() {
   if (otaPassword.length() && server.authenticate("admin", otaPassword.c_str())) return true;
@@ -66,7 +66,7 @@ static void handleOtaUpload() {
   if (upload.status==UPLOAD_FILE_START) {
     otaUploadOk=Update.begin(UPDATE_SIZE_UNKNOWN);
     if (!otaUploadOk) Update.printError(Serial);
-    else Serial.printf("OTA upload started: %s\\n", upload.filename.c_str());
+    else Serial.printf("OTA upload started: %s\n", upload.filename.c_str());
   } else if (upload.status==UPLOAD_FILE_WRITE) {
     if (!otaUploadOk || Update.write(upload.buf, upload.currentSize)!=upload.currentSize) {
       otaUploadOk=false;
@@ -76,7 +76,7 @@ static void handleOtaUpload() {
     if (otaUploadOk) {
       otaUploadOk=Update.end(true);
       if (!otaUploadOk) Update.printError(Serial);
-      else Serial.printf("OTA upload complete: %u bytes\\n", upload.totalSize);
+      else Serial.printf("OTA upload complete: %u bytes\n", upload.totalSize);
     }
   } else if (upload.status==UPLOAD_FILE_ABORTED) {
     otaUploadOk=false;
