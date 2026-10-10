@@ -6,11 +6,93 @@
 #include <time.h>
 #include <math.h>
 #include <LittleFS.h>
+#include <Update.h>
+#include <esp_system.h>
 #include <time.h>
 
 static WebServer server(80);
 static MeterManager* manager=nullptr;
 static bool started=false;
+static String otaPassword;
+static bool otaUploadOk=false;
+static bool otaUploadAuthorized=false;
+
+static void loadOtaPassword() {
+  Preferences p;
+  if (!p.begin("svt15ota", false)) {
+    Serial.println(F("OTA disabled: cannot open credential storage."));
+    return;
+  }
+  otaPassword=p.getString("password", "");
+  if (otaPassword.length()!=16) {
+    static const char hex[]="0123456789abcdef";
+    char generated[17];
+    for (int block=0; block<2; ++block) {
+      const uint32_t value=esp_random();
+      for (int nibble=0; nibble<8; ++nibble)
+        generated[block*8+nibble]=hex[(value >> (28-4*nibble)) & 0x0F];
+    }
+    generated[16]='\\0';
+    otaPassword=generated;
+    p.putString("password", otaPassword);
+    Serial.println(F("Generated a new OTA password; it is printed below."));
+  }
+  p.end();
+  Serial.printf("OTA update: http://192.168.4.1/update  username=admin  password=%s\\n", otaPassword.c_str());
+}
+static bool authorizeOta() {
+  if (otaPassword.length() && server.authenticate("admin", otaPassword.c_str())) return true;
+  server.requestAuthentication();
+  return false;
+}
+static void handleOtaPage() {
+  if (!authorizeOta()) return;
+  static const char page[] PROGMEM =
+    "<!doctype html><html lang='ru'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+    "<title>Обновление SVT-15</title><body style='font:16px system-ui;max-width:600px;margin:2em auto;padding:0 1em'>"
+    "<h2>Обновление прошивки ESP32</h2><p>Выберите собранный для этой платы файл .bin. Не отключайте питание во время обновления.</p>"
+    "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='firmware' accept='.bin' required>"
+    "<p><button type='submit'>Загрузить и установить</button></p></form><p><a href='/'>Назад</a></p></body></html>";
+  server.send_P(200,"text/html; charset=utf-8",page);
+}
+static void handleOtaUpload() {
+  HTTPUpload& upload=server.upload();
+  if (!server.authenticate("admin", otaPassword.c_str())) {
+    otaUploadAuthorized=false;
+    otaUploadOk=false;
+    return;
+  }
+  otaUploadAuthorized=true;
+  if (upload.status==UPLOAD_FILE_START) {
+    otaUploadOk=Update.begin(UPDATE_SIZE_UNKNOWN);
+    if (!otaUploadOk) Update.printError(Serial);
+    else Serial.printf("OTA upload started: %s\\n", upload.filename.c_str());
+  } else if (upload.status==UPLOAD_FILE_WRITE) {
+    if (!otaUploadOk || Update.write(upload.buf, upload.currentSize)!=upload.currentSize) {
+      otaUploadOk=false;
+      Update.printError(Serial);
+    }
+  } else if (upload.status==UPLOAD_FILE_END) {
+    if (otaUploadOk) {
+      otaUploadOk=Update.end(true);
+      if (!otaUploadOk) Update.printError(Serial);
+      else Serial.printf("OTA upload complete: %u bytes\\n", upload.totalSize);
+    }
+  } else if (upload.status==UPLOAD_FILE_ABORTED) {
+    otaUploadOk=false;
+    Update.abort();
+  }
+}
+static void handleOtaResult() {
+  if (!authorizeOta()) return;
+  if (!otaUploadAuthorized || !otaUploadOk || Update.hasError()) {
+    server.send(500,"text/plain; charset=utf-8","Обновление не выполнено. Проверьте Serial Monitor и размер/тип .bin.");
+    return;
+  }
+  server.send(200,"text/plain; charset=utf-8","Прошивка записана. Устройство перезапускается...");
+  delay(400);
+  ESP.restart();
+}
 
 static const char PAGE[] PROGMEM = R"HTML(
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -22,7 +104,7 @@ h1{font-size:22px;margin:0}h2{font-size:18px;margin:0 0 8px}.muted{color:#aab8ca
 label{display:flex;align-items:center;gap:8px;background:#26364c;padding:9px;border-radius:8px}input[type=text],input[type=password],input[type=number]{width:auto;height:auto;accent-color:initial}input{accent-color:#5eead4;width:18px;height:18px}
 button{padding:10px 14px;border:0;border-radius:8px;background:#0f766e;color:white;font-weight:600}
 </style></head><body><header><h1>Elehant SVT-15 Monitor</h1><div class="muted">Локальная сеть устройства</div></header><main>
-<p id="status">Загрузка данных…</p><section class="meter"><h2>Состояние и история</h2><p id="sys" class="muted">Загрузка…</p><a href="/history.csv" style="color:#5eead4">Скачать историю CSV</a><hr><h2 style="margin-top:14px">Wi-Fi роутер и время</h2><p class="muted">Точка доступа SVT-15 останется доступной. Пароль роутера хранится в настройках ESP32.</p><form id="netform" onsubmit="saveNetwork(event)"><p>Имя Wi-Fi (SSID)<br><input id="ssid" maxlength="32" autocomplete="off" style="width:95%;padding:10px"></p><p>Пароль Wi-Fi (если сеть та же, пустое поле сохраняет прежний пароль; для открытой сети оставьте пустым)<br><input id="pass" type="password" maxlength="63" autocomplete="new-password" style="width:95%;padding:10px"></p><p>Часовой пояс относительно UTC, часов (например, 5.5)<br><input id="tz" type="number" min="-12" max="14" step="0.25" value="0" style="width:100px;padding:10px"></p><button type="submit">Сохранить настройки</button></form><p id="netmsg" class="muted"></p></section><div id="meters"></div></main>
+<p id="status">Загрузка данных…</p><section class="meter"><h2>Состояние и история</h2><p id="sys" class="muted">Загрузка…</p><a href="/history.csv" style="color:#5eead4">Скачать историю CSV</a> · <a href="/update" style="color:#5eead4">Обновить прошивку (OTA)</a><hr><h2 style="margin-top:14px">Wi-Fi роутер и время</h2><p class="muted">Точка доступа SVT-15 останется доступной. Пароль роутера хранится в настройках ESP32.</p><form id="netform" onsubmit="saveNetwork(event)"><p>Имя Wi-Fi (SSID)<br><input id="ssid" maxlength="32" autocomplete="off" style="width:95%;padding:10px"></p><p>Пароль Wi-Fi (если сеть та же, пустое поле сохраняет прежний пароль; для открытой сети оставьте пустым)<br><input id="pass" type="password" maxlength="63" autocomplete="new-password" style="width:95%;padding:10px"></p><p>Часовой пояс относительно UTC, часов (например, 5.5)<br><input id="tz" type="number" min="-12" max="14" step="0.25" value="0" style="width:100px;padding:10px"></p><button type="submit">Сохранить настройки</button></form><p id="netmsg" class="muted"></p></section><div id="meters"></div></main>
 <script>
 const flags=['active','collect','history','lcd','web','telegram','totals','calculator','alarms'];
 const labels=['Активен','Сбор данных','История','Экран','WEB','Telegram','Итоги','Калькулятор','Тревоги'];
@@ -198,6 +280,8 @@ void networkBegin(MeterManager& meters){
   Serial.printf("Wi-Fi AP %s: %s, IP=%s\n",AP_DEFAULT_SSID,ok?"started":"FAILED",WiFi.softAPIP().toString().c_str());
   server.on("/",HTTP_GET,handleRoot);
   server.on("/history.csv",HTTP_GET,handleHistory);
+  server.on("/update",HTTP_GET,handleOtaPage);
+  server.on("/update",HTTP_POST,handleOtaResult,handleOtaUpload);
   server.on("/api/status",HTTP_GET,handleStatus);
   server.on("/api/network",HTTP_GET,handleGetNetwork);
   server.on("/api/network",HTTP_POST,handleSetNetwork);
@@ -205,6 +289,7 @@ void networkBegin(MeterManager& meters){
   server.on("/api/flag",HTTP_POST,handleFlag);
   server.onNotFound([](){server.send(404,"application/json","{\"error\":\"not_found\"}");});
   server.begin();
+  loadOtaPassword();
   loadNetworkSettings();
   started=true;
 }
