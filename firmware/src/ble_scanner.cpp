@@ -31,6 +31,7 @@ class RawCallbacks : public NimBLEScanCallbacks {
     if (packet.hasBattery) Serial.printf("Battery: %u%%\n", packet.batteryPercent);
     if (packet.temperatureValid) Serial.printf("Temperature: %.2f C\n", packet.temperatureC);
     if (packet.type==7) Serial.println("WiFi box/gateway: diagnostics only; excluded from meter totals.");
+#endif
   }
 };
 static RawCallbacks scanCallbacks;
@@ -40,8 +41,10 @@ void bleScannerBegin() {
   scanner=NimBLEDevice::getScan();
   scanner->setScanCallbacks(&scanCallbacks, false);
   scanner->setActiveScan(false);
-  scanner->setInterval(100);
-  scanner->setWindow(80);
+  // BLE scan units are 0.625 ms: 160=100 ms interval, 40=25 ms window (25% duty cycle).
+  // Lower duty cycle reduces radio/CPU activity; detection may take longer.
+  scanner->setInterval(160);
+  scanner->setWindow(40);
 }
 void bleScannerPoll() {
   if (scanner && !scanner->isScanning()) scanner->start(4, false, true);
