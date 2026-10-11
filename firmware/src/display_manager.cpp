@@ -12,7 +12,7 @@
   static TFT_eSPI screen;
 #endif
 
-static uint32_t lastDrawAt=0;
+static uint32_t lastDrawAt=millis()-1000UL;
 static bool initialized=false;
 static uint32_t backlightDeadline=0;
 static uint32_t lastAlarmBlink=0;
@@ -120,7 +120,7 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
       uint32_t phase=nowMillis%4000UL;
       uint32_t triangle=(phase<2000UL)?phase:(4000UL-phase);
       uint8_t blue=(uint8_t)(12UL+(triangle*243UL/2000UL));
-      background=(uint16_t)((blue>>3)&0x1F) | (uint16_t)((uint16_t)(blue>>2)<<5);
+      background=(uint16_t)((blue>>3)&0x1F);
     }
   }
   screen.fillScreen(background);
