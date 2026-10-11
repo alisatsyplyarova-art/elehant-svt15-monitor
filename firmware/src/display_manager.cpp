@@ -111,6 +111,7 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
 #elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
   uint16_t background=TFT_BLACK;
   uint16_t foreground=TFT_WHITE;
+#if defined(BOARD_ESP32_C3)
   if (alarmActive) {
     background=alarmBlinkOn ? TFT_RED : TFT_BLACK;
   } else {
@@ -120,9 +121,10 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
       uint32_t phase=nowMillis%4000UL;
       uint32_t triangle=(phase<2000UL)?phase:(4000UL-phase);
       uint8_t blue=(uint8_t)(12UL+(triangle*243UL/2000UL));
-      background=(uint16_t)((blue>>3)&0x1F);
+      background=(uint16_t)((blue>>3)&0x1F) << 11;
     }
   }
+#endif
   screen.fillScreen(background);
   screen.setTextColor(foreground,background);
   screen.setCursor(0,0);
