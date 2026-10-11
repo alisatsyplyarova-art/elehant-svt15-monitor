@@ -30,11 +30,11 @@ static const HardwareProfile HW = {
 #else
 static const HardwareProfile HW = {
   "ESP32-C3 + ST7735 (SPI pins based on user pin map; verify module)",
-  1, 5, true, true, 3, 10, 7, 6, 11, 4, -1, false
+  1, 5, true, true, 3, 10, 7, 6, 5, 4, -1, false
 };
 #endif
 
-// ESP32-C3 + ST7735 128x160 SPI display, using the current user pin map:
+// ESP32-C3 + ST7735 128x160 SPI display; use exposed GPIOs, avoid GPIO11-17 (module flash pins):
 // UP=GPIO1, DOWN=GPIO5; SCLK=GPIO3, MOSI=GPIO10,
 // DC=GPIO6, CS=GPIO7, RST=GPIO11, BL control=GPIO4.
 // Confirm the exact module pin labels and board contacts before wiring.
