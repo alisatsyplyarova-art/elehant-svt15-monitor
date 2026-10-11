@@ -65,7 +65,7 @@ void displayBegin() {
 }
 
 void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selectedMeter, bool configMode, uint8_t selectedFlag) {
-  if (!initialized || nowMillis-lastDrawAt<250) return;
+  if (!initialized || nowMillis-lastDrawAt<1000) return;
   lastDrawAt=nowMillis;
   const uint8_t count=meters.count();
   if (count && selectedMeter>=count) selectedMeter=0;
