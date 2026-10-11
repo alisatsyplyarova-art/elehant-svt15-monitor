@@ -20,6 +20,7 @@ class RawCallbacks : public NimBLEScanCallbacks {
     const String mac=d->getAddress().toString().c_str();
     if (!parseElehantPacket(data,len,mac.c_str(),d->getRSSI(),packet)) return;
     meterManager.observe(packet);
+#if defined(BLE_DEBUG_LOG)
     Serial.printf("Elehant type=%u model=%u SN=%lu version=%u MAC=%s RSSI=%d\n",
       packet.type, packet.model, (unsigned long)packet.serial, packet.version,
       packet.mac.c_str(), packet.rssi);
