@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [esp32-c3, ttgo-t-display, ttgo-t-display-s3]
+        environment: [esp32-c3, esp32-c3-web, ttgo-t-display, ttgo-t-display-s3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
