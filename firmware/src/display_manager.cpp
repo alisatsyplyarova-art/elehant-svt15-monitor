@@ -1,6 +1,7 @@
 #include "display_manager.h"
 #include "config.h"
 #include "hardware_profiles.h"
+#include <time.h>
 
 #if defined(DISPLAY_LCD5110)
   #include <Adafruit_GFX.h>
@@ -27,20 +28,6 @@ static void setBacklight(bool on) {
 #endif
 }
 
-static bool initialized=false;
-static uint32_t backlightDeadline=0;
-static uint32_t lastAlarmBlink=0;
-static bool displayAwake=false;
-static bool alarmActive=false;
-static bool alarmBlinkOn=false;
-
-static void setBacklight(bool on) {
-#if defined(DISPLAY_LCD5110) || defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
-  if (HW.displayBacklight>=0) digitalWrite(HW.displayBacklight,on?HIGH:LOW);
-#else
-  (void)on;
-#endif
-}
 static const uint16_t flagBits[]={METER_ACTIVE,METER_COLLECT,METER_HISTORY,METER_LCD,METER_WEB,METER_TELEGRAM,METER_TOTALS,METER_CALCULATOR,METER_ALARMS};
 static const char* flagLabels[]={ "Active","Collect","History","LCD","Web","Telegram","Totals","Calculator","Alarms" };
 
@@ -122,7 +109,22 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
   }
   screen.display();
 #elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
-  screen.fillScreen(TFT_BLACK);
+  uint16_t background=TFT_BLACK;
+  uint16_t foreground=TFT_WHITE;
+  if (alarmActive) {
+    background=alarmBlinkOn ? TFT_RED : TFT_BLACK;
+  } else {
+    time_t wallClock=time(nullptr);
+    struct tm timeParts;
+    if (wallClock>1760000000 && localtime_r(&wallClock,&timeParts) && timeParts.tm_mday==23) {
+      uint32_t phase=nowMillis%4000UL;
+      uint32_t triangle=(phase<2000UL)?phase:(4000UL-phase);
+      uint8_t blue=(uint8_t)(12UL+(triangle*243UL/2000UL));
+      background=(uint16_t)((blue>>3)&0x1F) | (uint16_t)((uint16_t)(blue>>2)<<5);
+    }
+  }
+  screen.fillScreen(background);
+  screen.setTextColor(foreground,background);
   screen.setCursor(0,0);
   screen.setTextSize(2);
   screen.println(F("SVT-15"));
@@ -201,6 +203,7 @@ void displaySetAlarm(bool active) {
   alarmBlinkOn=active;
   if (active) setBacklight(true);
   else setBacklight(displayAwake && (int32_t)(backlightDeadline-millis())>0);
+  lastDrawAt=0;
 }
 
 void displayService(uint32_t nowMillis) {
@@ -208,7 +211,8 @@ void displayService(uint32_t nowMillis) {
     if (nowMillis-lastAlarmBlink>=500UL) {
       lastAlarmBlink=nowMillis;
       alarmBlinkOn=!alarmBlinkOn;
-      setBacklight(alarmBlinkOn);
+      setBacklight(true);
+      lastDrawAt=0;
     }
   } else if (!displayAwake || (int32_t)(nowMillis-backlightDeadline)>=0) {
     displayAwake=false;
