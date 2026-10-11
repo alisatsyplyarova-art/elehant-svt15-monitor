@@ -65,7 +65,11 @@ void displayBegin() {
 }
 
 void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selectedMeter, bool configMode, uint8_t selectedFlag) {
+#if defined(BOARD_TTGO_TDISPLAY) || defined(BOARD_TTGO_TDISPLAY_S3)
+  if (!initialized || nowMillis-lastDrawAt<250) return;
+#else
   if (!initialized || nowMillis-lastDrawAt<1000) return;
+#endif
   lastDrawAt=nowMillis;
   const uint8_t count=meters.count();
   if (count && selectedMeter>=count) selectedMeter=0;
