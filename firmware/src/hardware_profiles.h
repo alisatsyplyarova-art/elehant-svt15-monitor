@@ -30,17 +30,17 @@ static const HardwareProfile HW = {
 #else
 static const HardwareProfile HW = {
   "ESP32-C3 + ST7735 (SPI pins based on user pin map; verify module)",
-  1, 5, true, true, 3, 10, 7, 6, 5, 4, -1, false
+  1, 0, true, true, 3, 10, 7, 6, 5, 4, -1, false
 };
 #endif
 
 // ESP32-C3 + ST7735 128x160 SPI display; use exposed GPIOs, avoid GPIO11-17 (module flash pins):
-// UP=GPIO1, DOWN=GPIO5; SCLK=GPIO3, MOSI=GPIO10,
-// DC=GPIO6, CS=GPIO7, RST=GPIO11, BL control=GPIO4.
+// UP=GPIO1, DOWN=GPIO0; SCLK=GPIO3, MOSI=GPIO10,
+// DC=GPIO6, CS=GPIO7, RST=GPIO5, BL control=GPIO4.
 // Confirm the exact module pin labels and board contacts before wiring.
 // Backlight BL must be controlled through GPIO4 (directly only if its input current is safe;
 // otherwise use a transistor/MOSFET). Do not tie BL permanently to 3V3 if software dim/off is needed.
-// GPIO0/8/9 may be boot-strapping pins; GPIO18/19 are USB on ESP32-C3.
+// GPIO2/8/9 are strapping pins; GPIO18/19 are USB on ESP32-C3. GPIO11-17 are reserved for module flash.
 // Classic T-Display: GPIO0=BTN1/BOOT; GPIO35=BTN2 (input-only, no internal pull-up);
 // display GPIO18=SCLK, 19=MOSI, 5=CS, 16=DC, 23=RST, 4=BL.
 // T-Display S3 typical pins: SCLK=18, MOSI=17, CS=6, DC=7, RST=5,
