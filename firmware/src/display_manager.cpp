@@ -6,7 +6,7 @@
   #include <Adafruit_GFX.h>
   #include <Adafruit_PCD8544.h>
   static Adafruit_PCD8544 screen(HW.displaySclk, HW.displayMosi, HW.displayDc, HW.displayCs, HW.displayRst);
-#elif defined(DISPLAY_ST7789)
+#elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
   #include <TFT_eSPI.h>
   static TFT_eSPI screen;
 #endif
@@ -20,7 +20,7 @@ static bool alarmActive=false;
 static bool alarmBlinkOn=false;
 
 static void setBacklight(bool on) {
-#if defined(DISPLAY_LCD5110) || defined(DISPLAY_ST7789)
+#if defined(DISPLAY_LCD5110) || defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
   if (HW.displayBacklight>=0) digitalWrite(HW.displayBacklight,on?HIGH:LOW);
 #else
   (void)on;
@@ -157,7 +157,7 @@ void displayWake() {
   displayAwake=true;
   backlightDeadline=millis()+BACKLIGHT_TIMEOUT_MS;
   setBacklight(true);
-#if defined(DISPLAY_ST7789)
+#if defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
   if (HW.displayPower>=0) digitalWrite(HW.displayPower,HIGH);
 #endif
 }
