@@ -6,7 +6,7 @@
   #include <Adafruit_GFX.h>
   #include <Adafruit_PCD8544.h>
   static Adafruit_PCD8544 screen(HW.displaySclk, HW.displayMosi, HW.displayDc, HW.displayCs, HW.displayRst);
-#elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
+#elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735) || defined(DISPLAY_ST7735)
   #include <TFT_eSPI.h>
   static TFT_eSPI screen;
 #endif
@@ -40,7 +40,7 @@ void displayBegin() {
     pinMode(HW.displayBacklight,OUTPUT);
     digitalWrite(HW.displayBacklight,LOW);
   }
-#elif defined(DISPLAY_ST7789)
+#elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
   screen.init();
   screen.setRotation(1);
   screen.fillScreen(TFT_BLACK);
@@ -106,7 +106,7 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
     }
   }
   screen.display();
-#elif defined(DISPLAY_ST7789)
+#elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
   screen.fillScreen(TFT_BLACK);
   screen.setCursor(0,0);
   screen.setTextSize(2);
