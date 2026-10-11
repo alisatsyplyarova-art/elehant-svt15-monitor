@@ -29,17 +29,17 @@ static const HardwareProfile HW = {
 };
 #else
 static const HardwareProfile HW = {
-  "ESP32-C3 + LCD5110 (user pin map; verify backlight wiring)",
+  "ESP32-C3 + ST7735 (SPI pins based on user pin map; verify module)",
   1, 5, true, true, 3, 10, 7, 6, 11, 4, -1, false
 };
 #endif
 
-// ESP32-C3 + Nokia 5110 based on the user-provided 32-pin map:
-// UP=GPIO1, DOWN=GPIO5; LCD SCLK=GPIO3, MOSI/DIN=GPIO10,
-// DC=GPIO6, CS=GPIO7, RST=GPIO11. Backlight is tied to 3V3,
-// so displayBacklight=-1 (not GPIO-controlled). Verify power pins on PCB.
-// GPIO4 (contact 28 in the supplied preliminary map) is used for backlight control;
-// confirm it is free and route BL through a suitable transistor/MOSFET if BL is tied to 3V3.
+// ESP32-C3 + ST7735 128x160 SPI display, using the current user pin map:
+// UP=GPIO1, DOWN=GPIO5; SCLK=GPIO3, MOSI=GPIO10,
+// DC=GPIO6, CS=GPIO7, RST=GPIO11, BL control=GPIO4.
+// Confirm the exact module pin labels and board contacts before wiring.
+// Backlight BL must be controlled through GPIO4 (directly only if its input current is safe;
+// otherwise use a transistor/MOSFET). Do not tie BL permanently to 3V3 if software dim/off is needed.
 // GPIO0/8/9 may be boot-strapping pins; GPIO18/19 are USB on ESP32-C3.
 // Classic T-Display: GPIO0=BTN1/BOOT; GPIO35=BTN2 (input-only, no internal pull-up);
 // display GPIO18=SCLK, 19=MOSI, 5=CS, 16=DC, 23=RST, 4=BL.
