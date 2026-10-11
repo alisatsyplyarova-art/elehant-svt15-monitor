@@ -42,10 +42,16 @@ void bleScannerBegin() {
   scanner=NimBLEDevice::getScan();
   scanner->setScanCallbacks(&scanCallbacks, false);
   scanner->setActiveScan(false);
+#if defined(BOARD_TTGO_TDISPLAY) || defined(BOARD_TTGO_TDISPLAY_S3)
+  // Keep the original scan duty cycle on boards with more resources.
+  scanner->setInterval(100);
+  scanner->setWindow(80);
+#else
   // BLE scan units are 0.625 ms: 160=100 ms interval, 40=25 ms window (25% duty cycle).
   // Lower duty cycle reduces radio/CPU activity; detection may take longer.
   scanner->setInterval(160);
   scanner->setWindow(40);
+#endif
 }
 void bleScannerPoll() {
   if (scanner && !scanner->isScanning()) scanner->start(4, false, true);
