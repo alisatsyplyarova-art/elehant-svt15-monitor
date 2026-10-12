@@ -7,7 +7,14 @@
   #include <Adafruit_GFX.h>
   #include <Adafruit_PCD8544.h>
   static Adafruit_PCD8544 screen(HW.displaySclk, HW.displayMosi, HW.displayDc, HW.displayCs, HW.displayRst);
-#elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
+#elif defined(DISPLAY_ST7735)
+  #include <SPI.h>
+  #include <Adafruit_ST7735.h>
+  static Adafruit_ST7735 screen(&SPI, HW.displayCs, HW.displayDc, HW.displayRst);
+  #define TFT_BLACK ST77XX_BLACK
+  #define TFT_WHITE ST77XX_WHITE
+  #define TFT_RED   ST77XX_RED
+#elif defined(DISPLAY_ST7789)
   #include <TFT_eSPI.h>
   static TFT_eSPI screen;
 #endif
@@ -42,7 +49,23 @@ void displayBegin() {
     pinMode(HW.displayBacklight,OUTPUT);
     digitalWrite(HW.displayBacklight,LOW);
   }
-#elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
+#elif defined(DISPLAY_ST7735)
+  // Match the known-working Claude monitor_elehant v4.6-cl display setup.
+  SPI.begin(HW.displaySclk, -1, HW.displayMosi, -1);
+  screen.initR(INITR_BLACKTAB);
+  screen.setRotation(1);
+  screen.fillScreen(TFT_BLACK);
+  screen.setTextSize(1);
+  screen.setTextColor(TFT_WHITE, TFT_BLACK);
+  if (HW.displayPower>=0) {
+    pinMode(HW.displayPower,OUTPUT);
+    digitalWrite(HW.displayPower,HIGH);
+  }
+  if (HW.displayBacklight>=0) {
+    pinMode(HW.displayBacklight,OUTPUT);
+    digitalWrite(HW.displayBacklight,LOW);
+  }
+#elif defined(DISPLAY_ST7789)
   screen.init();
   screen.setRotation(1);
   screen.fillScreen(TFT_BLACK);
