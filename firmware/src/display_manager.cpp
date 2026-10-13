@@ -2,6 +2,7 @@
 #include "config.h"
 #include "hardware_profiles.h"
 #include <time.h>
+#include <WiFi.h>
 
 #if defined(DISPLAY_LCD5110)
   #include <Adafruit_GFX.h>
@@ -14,6 +15,8 @@
   #define TFT_BLACK ST77XX_BLACK
   #define TFT_WHITE ST77XX_WHITE
   #define TFT_RED   ST77XX_RED
+  #define TFT_YELLOW ST77XX_YELLOW
+  #define TFT_BLUE ST77XX_BLUE
 #elif defined(DISPLAY_ST7789)
   #include <TFT_eSPI.h>
   static TFT_eSPI screen;
@@ -22,10 +25,8 @@
 static uint32_t lastDrawAt=millis()-1000UL;
 static bool initialized=false;
 static uint32_t backlightDeadline=0;
-static uint32_t lastAlarmBlink=0;
 static bool displayAwake=false;
 static bool alarmActive=false;
-static bool alarmBlinkOn=false;
 
 static void setBacklight(bool on) {
 #if defined(DISPLAY_LCD5110) || defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
@@ -85,7 +86,6 @@ void displayBegin() {
   backlightDeadline=0;
   displayAwake=false;
   alarmActive=false;
-  alarmBlinkOn=false;
   setBacklight(false);
 }
 
@@ -132,60 +132,100 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
   }
   screen.display();
 #elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
-  uint16_t background=TFT_BLACK;
-  uint16_t foreground=TFT_WHITE;
-  if (alarmActive) {
-    background=alarmBlinkOn ? TFT_RED : TFT_BLACK;
-  } else {
-    time_t wallClock=time(nullptr);
-    struct tm timeParts;
-    if (wallClock>1760000000 && localtime_r(&wallClock,&timeParts) && timeParts.tm_mday==23) {
-      uint32_t phase=nowMillis%4000UL;
-      uint32_t triangle=(phase<2000UL)?phase:(4000UL-phase);
-      uint8_t blue=(uint8_t)(12UL+(triangle*243UL/2000UL));
-      background=(uint16_t)((blue>>3)&0x1F) << 11;
-    }
-  }
+  // Keep the screen calm and readable: no full-screen alarm flashing.
+  const uint16_t background=TFT_BLACK;
   screen.fillScreen(background);
-  screen.setTextColor(foreground,background);
-  screen.setCursor(0,0);
-  screen.setTextSize(2);
-  screen.println(F("SVT-15"));
   screen.setTextSize(1);
-  screen.print(F("Meters: ")); screen.println(count);
+  screen.setTextColor(TFT_WHITE,background);
+  screen.setCursor(0,0);
+  screen.println(F("SVT-15 Monitor"));
+  screen.drawFastHLine(0,9,screen.width(),TFT_WHITE);
+
   if (!count) {
-    screen.println(F("Searching for BLE meters..."));
+    screen.setCursor(0,14);
+    screen.println(F("Нет данных"));
+    screen.println(F("Поиск счетчика BLE..."));
   } else {
-    screen.println();
-    screen.print(F("Selected: ")); screen.print(selectedMeter+1); screen.print('/'); screen.println(count);
-    screen.print(F("Serial: ")); screen.println(cfg?cfg->serial:0);
-    if (!(cfg->flags&METER_LCD) && !configMode) {
-      screen.println(F("Display disabled for this meter"));
-      screen.println(F("BOTH: settings"));
-    } else if (configMode) {
-      screen.println(F("METER SETTINGS"));
+    screen.setCursor(0,13);
+    screen.print(F("#")); screen.print(selectedMeter+1); screen.print('/'); screen.print(count);
+    screen.print(F(" SN:")); screen.println(cfg?cfg->serial:0);
+
+    if (configMode) {
+      screen.setCursor(0,27);
+      screen.println(F("НАСТРОЙКИ СЧЕТЧИКА"));
       screen.print(F("> ")); screen.println(flagLabels[flag]);
-      screen.print(F("State: ")); screen.println(enabled?F("ON"):F("OFF"));
-      screen.println(F("UP/DOWN: choose"));
-      screen.println(F("BOTH: toggle"));
-      screen.println(F("BOTH long: exit"));
+      screen.print(F("Состояние: ")); screen.println(enabled?F("ON"):F("OFF"));
+      screen.println(F("UP/DOWN: выбор"));
+      screen.println(F("BOTH: переключить"));
+      screen.println(F("BOTH long: выход"));
+    } else if (!(cfg->flags&METER_LCD)) {
+      screen.setCursor(0,29);
+      screen.println(F("Экран отключен"));
+      screen.println(F("для этого счетчика"));
     } else {
+      uint16_t ageMinutes=0;
+      const uint32_t lastSeen=meters.lastSeenMillisAt(selectedMeter);
+      if (packet) ageMinutes=(uint16_t)((nowMillis-lastSeen)/60000UL);
+
+      // Tariff 1 = hot water (yellow); tariff 2 = cold water (blue).
+      int y=28;
       if (packet && packet->hasReading) {
-        screen.print(F("Reading: ")); screen.print(packet->reading,4); screen.print(' '); screen.println(packet->unit);
+        screen.setCursor(0,y);
+        screen.setTextColor(TFT_YELLOW,background);
+        screen.print(F("ГОРЯЧАЯ: "));
+        screen.print(packet->reading,3); screen.print(' '); screen.println(packet->unit);
+        y+=13;
       }
       if (packet && packet->hasReading2) {
-        screen.print(F("Reading 2: ")); screen.print(packet->reading2,4); screen.print(' '); screen.println(packet->unit);
+        screen.setCursor(0,y);
+        screen.setTextColor(TFT_BLUE,background);
+        screen.print(F("ХОЛОДНАЯ: "));
+        screen.print(packet->reading2,3); screen.print(' '); screen.println(packet->unit);
+        y+=13;
       }
-      if (packet) {
-        for (uint8_t i=0; i<packet->fieldCount && i<5; ++i) {
-          screen.print(packet->fields[i].key); screen.print(F(": "));
-          screen.print(packet->fields[i].value,2); screen.print(' '); screen.println(packet->fields[i].unit);
+      screen.setTextColor(TFT_WHITE,background);
+      if (!packet) {
+        screen.setCursor(0,y);
+        screen.println(F("Авария: нет данных"));
+        y+=12;
+      } else {
+        if (packet->hasBattery) {
+          screen.setCursor(0,y);
+          screen.print(F("Батарея: ")); screen.print(packet->batteryPercent); screen.println('%');
+          y+=11;
         }
-        if (packet->hasBattery) { screen.print(F("Battery: ")); screen.print(packet->batteryPercent); screen.println('%'); }
-        screen.print(F("RSSI: ")); screen.print(packet->rssi); screen.println(F(" dBm"));
-      } else screen.println(F("Waiting for BLE packet"));
-      screen.println(F("UP/DOWN: meter"));
-      screen.println(F("BOTH: settings"));
+        if (packet->temperatureValid) {
+          screen.setCursor(0,y);
+          screen.print(F("Температура: ")); screen.print(packet->temperatureC,1); screen.println(F(" C"));
+          y+=11;
+        }
+        screen.setCursor(0,y);
+        screen.print(F("Данные: ")); screen.print(ageMinutes); screen.println(F(" мин назад"));
+        y+=11;
+      }
+      if (alarmActive) {
+        screen.setCursor(0,y);
+        screen.setTextColor(TFT_RED,background);
+        if (!packet) screen.println(F("АВАРИЯ: НЕТ ДАННЫХ"));
+        else screen.println(F("АВАРИЯ"));
+        y+=11;
+        screen.setTextColor(TFT_WHITE,background);
+      }
+      // Home Wi-Fi status is shown only when connected to the router.
+      if (WiFi.status()==WL_CONNECTED && y<=screen.height()-20) {
+        screen.setCursor(0,screen.height()-19);
+        screen.print(F("Wi-Fi: "));
+        String ssid=WiFi.SSID();
+        if (ssid.length()>18) ssid=ssid.substring(0,18);
+        screen.println(ssid);
+        screen.setCursor(0,screen.height()-9);
+        screen.print(F("IP: "));
+        screen.println(WiFi.localIP());
+      } else if (y<=screen.height()-10) {
+        screen.setCursor(0,screen.height()-9);
+        screen.println(F("Wi-Fi: не подключен"));
+      }
+      // Keep the most useful navigation hint out of the data area.
     }
   }
 #elif defined(DISPLAY_NONE)
@@ -213,7 +253,7 @@ bool displayButtonActivity(uint32_t nowMillis) {
   displayAwake=true;
   backlightDeadline=nowMillis+BACKLIGHT_TIMEOUT_MS;
   if (!wasAwake) {
-    setBacklight(!alarmActive || alarmBlinkOn);
+    setBacklight(true);
     return true; // first press wakes the screen without changing selection
   }
   return false; // subsequent press extends timeout and keeps its normal action
@@ -222,8 +262,6 @@ bool displayButtonActivity(uint32_t nowMillis) {
 void displaySetAlarm(bool active) {
   if (alarmActive==active) return;
   alarmActive=active;
-  lastAlarmBlink=millis();
-  alarmBlinkOn=active;
   if (active) setBacklight(true);
   else setBacklight(displayAwake && (int32_t)(backlightDeadline-millis())>0);
   lastDrawAt=0;
@@ -231,12 +269,7 @@ void displaySetAlarm(bool active) {
 
 void displayService(uint32_t nowMillis) {
   if (alarmActive) {
-    if (nowMillis-lastAlarmBlink>=500UL) {
-      lastAlarmBlink=nowMillis;
-      alarmBlinkOn=!alarmBlinkOn;
-      setBacklight(true);
-      lastDrawAt=0;
-    }
+    setBacklight(true);
   } else if (!displayAwake || (int32_t)(nowMillis-backlightDeadline)>=0) {
     displayAwake=false;
     setBacklight(false);
