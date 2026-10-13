@@ -143,8 +143,8 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
 
   if (!count) {
     screen.setCursor(0,14);
-    screen.println(F("Нет данных"));
-    screen.println(F("Поиск счетчика BLE..."));
+    screen.println(F("NO DATA"));
+    screen.println(F("Searching BLE..."));
   } else {
     screen.setCursor(0,13);
     screen.print(F("#")); screen.print(selectedMeter+1); screen.print('/'); screen.print(count);
@@ -152,16 +152,16 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
 
     if (configMode) {
       screen.setCursor(0,27);
-      screen.println(F("НАСТРОЙКИ СЧЕТЧИКА"));
+      screen.println(F("METER SETTINGS"));
       screen.print(F("> ")); screen.println(flagLabels[flag]);
-      screen.print(F("Состояние: ")); screen.println(enabled?F("ON"):F("OFF"));
+      screen.print(F("State: ")); screen.println(enabled?F("ON"):F("OFF"));
       screen.println(F("UP/DOWN: выбор"));
       screen.println(F("BOTH: переключить"));
       screen.println(F("BOTH long: выход"));
     } else if (!(cfg->flags&METER_LCD)) {
       screen.setCursor(0,29);
-      screen.println(F("Экран отключен"));
-      screen.println(F("для этого счетчика"));
+      screen.println(F("Display disabled"));
+      screen.println(F("for this meter"));
     } else {
       uint16_t ageMinutes=0;
       const uint32_t lastSeen=meters.lastSeenMillisAt(selectedMeter);
@@ -172,42 +172,42 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
       if (packet && packet->hasReading) {
         screen.setCursor(0,y);
         screen.setTextColor(TFT_YELLOW,background);
-        screen.print(F("ГОРЯЧАЯ: "));
+        screen.print(F("HOT: "));
         screen.print(packet->reading,3); screen.print(' '); screen.println(packet->unit);
         y+=13;
       }
       if (packet && packet->hasReading2) {
         screen.setCursor(0,y);
         screen.setTextColor(TFT_BLUE,background);
-        screen.print(F("ХОЛОДНАЯ: "));
+        screen.print(F("COLD: "));
         screen.print(packet->reading2,3); screen.print(' '); screen.println(packet->unit);
         y+=13;
       }
       screen.setTextColor(TFT_WHITE,background);
       if (!packet) {
         screen.setCursor(0,y);
-        screen.println(F("Авария: нет данных"));
+        screen.println(F("Alarm: NO DATA"));
         y+=12;
       } else {
         if (packet->hasBattery) {
           screen.setCursor(0,y);
-          screen.print(F("Батарея: ")); screen.print(packet->batteryPercent); screen.println('%');
+          screen.print(F("Battery: ")); screen.print(packet->batteryPercent); screen.println('%');
           y+=11;
         }
         if (packet->temperatureValid) {
           screen.setCursor(0,y);
-          screen.print(F("Температура: ")); screen.print(packet->temperatureC,1); screen.println(F(" C"));
+          screen.print(F("Temp: ")); screen.print(packet->temperatureC,1); screen.println(F(" C"));
           y+=11;
         }
         screen.setCursor(0,y);
-        screen.print(F("Данные: ")); screen.print(ageMinutes); screen.println(F(" мин назад"));
+        screen.print(F("Данные: ")); screen.print(ageMinutes); screen.println(F(" min ago"));
         y+=11;
       }
       if (alarmActive) {
         screen.setCursor(0,y);
         screen.setTextColor(TFT_RED,background);
-        if (!packet) screen.println(F("АВАРИЯ: НЕТ ДАННЫХ"));
-        else screen.println(F("АВАРИЯ"));
+        if (!packet) screen.println(F("ALARM: NO DATA"));
+        else screen.println(F("ALARM"));
         y+=11;
         screen.setTextColor(TFT_WHITE,background);
       }
@@ -223,7 +223,7 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
         screen.println(WiFi.localIP());
       } else if (y<=screen.height()-10) {
         screen.setCursor(0,screen.height()-9);
-        screen.println(F("Wi-Fi: не подключен"));
+        screen.println(F("Wi-Fi: offline"));
       }
       // Keep the most useful navigation hint out of the data area.
     }
