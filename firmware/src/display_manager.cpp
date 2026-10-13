@@ -39,7 +39,7 @@ static void setBacklight(bool on) {
 }
 
 static const uint16_t flagBits[]={METER_ACTIVE,METER_COLLECT,METER_HISTORY,METER_LCD,METER_WEB,METER_TELEGRAM,METER_TOTALS,METER_CALCULATOR,METER_ALARMS};
-static const char* flagLabels[]={ "Active","Collect","History","LCD","Web","Telegram","Totals","Calculator","Alarms" };
+static const char* flagLabels[]={ "Активен","Сбор данных","История","Экран","Веб","Телеграм","Итоги","Калькулятор","Аварии" };
 
 void displayBegin() {
 #if defined(DISPLAY_LCD5110)
