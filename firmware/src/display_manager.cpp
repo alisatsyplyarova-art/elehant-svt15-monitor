@@ -138,7 +138,7 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
     }
   }
   screen.display();
-#elif defined(DISPLAY_ST7789) || defined(DISPLAY_ST7735)
+#elif defined(DISPLAY_ST7735)
   const uint16_t background=TFT_BLACK;
   screen.fillScreen(background);
   cyrillic.setFont(u8g2_font_5x8_t_cyrillic);
@@ -221,6 +221,48 @@ void displayRender(const MeterManager& meters, uint32_t nowMillis, uint8_t selec
       } else {
         cyrillic.drawUTF8(0,screen.height()-7,"Домашняя сеть: нет");
       }
+    }
+  }
+#elif defined(DISPLAY_ST7789)
+  // Keep the legacy TFT_eSPI rendering path for TTGO boards.
+  screen.fillScreen(TFT_BLACK);
+  screen.setTextColor(TFT_WHITE, TFT_BLACK);
+  screen.setTextSize(1);
+  screen.setCursor(0, 0);
+  screen.println(F("SVT-15 Monitor"));
+  if (!count) {
+    screen.println(F("No meter data"));
+  } else {
+    screen.print(F("Meter "));
+    screen.print(selectedMeter + 1);
+    screen.print('/');
+    screen.println(count);
+    screen.print(F("SN: "));
+    screen.println(cfg ? cfg->serial : 0);
+    if (configMode) {
+      screen.println(F("Meter settings"));
+      screen.println(flagLabels[flag]);
+      screen.println(enabled ? F("Enabled") : F("Disabled"));
+    } else if (!(cfg->flags & METER_LCD)) {
+      screen.println(F("Display disabled"));
+    } else if (packet && packet->hasReading) {
+      screen.print(F("Reading: "));
+      screen.print(packet->reading, 3);
+      screen.print(' ');
+      screen.println(packet->unit.c_str());
+      if (packet->hasReading2) {
+        screen.print(F("Reading 2: "));
+        screen.print(packet->reading2, 3);
+        screen.print(' ');
+        screen.println(packet->unit.c_str());
+      }
+      if (packet->hasBattery) {
+        screen.print(F("Battery: "));
+        screen.print(packet->batteryPercent);
+        screen.println('%');
+      }
+    } else {
+      screen.println(F("No data"));
     }
   }
 #elif defined(DISPLAY_NONE)
