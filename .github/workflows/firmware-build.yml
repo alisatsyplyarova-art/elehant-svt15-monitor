@@ -29,3 +29,17 @@ jobs:
       - name: Build firmware
         working-directory: firmware
         run: pio run -e ${{ matrix.environment }}
+      - name: Package firmware binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "firmware/.pio/build/${{ matrix.environment }}/firmware.bin" "dist/elehant-svt15-${{ matrix.environment }}.bin"
+          cd dist
+          zip "elehant-svt15-${{ matrix.environment }}.zip" "elehant-svt15-${{ matrix.environment }}.bin"
+      - name: Upload firmware ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: elehant-svt15-${{ matrix.environment }}
+          path: dist/elehant-svt15-${{ matrix.environment }}.zip
+          if-no-files-found: error
+          retention-days: 30
