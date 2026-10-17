@@ -41,6 +41,8 @@ Name: "{app}\docs"; Flags: uninsneveruninstall
 Source: "..\release\Elehant_SVT15_Monitor.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\release\Elehant_SVT15_Service.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\release\Elehant_Graph_Viewer.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Историю показаний устанавливать только если её ещё нет; если файла в сборке нет — пропустить строку.
+Source: "..\release\elehant_history.csv"; DestDir: "{app}"; Flags: onlyifdoesntexist skipifsourcedoesntexist
 Source: "..\install\start_elephant_hidden.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\install\create_task.ps1"; DestDir: "{app}\install"; Flags: ignoreversion
 Source: "..\docs\GRAPH_VIEWER.md"; DestDir: "{app}\docs"; Flags: ignoreversion
