@@ -161,3 +161,14 @@ third_party/elehant_water
 **GNU General Public License v3.0 (GPL-3.0).**
 
 Сторонние компоненты сохраняют собственные лицензии.
+
+
+## Графики расхода воды из CSV
+
+В репозитории также находится отдельная программа **Elehant Graph Viewer** для построения графиков расхода по сохранённой истории СВТ-15. Она показывает расход горячей и холодной воды, сводку за выбранный период и последние сохранённые показания с температурой; последние показания обновляются каждые 60 секунд.
+
+- Инструкция и описание: [docs/GRAPH_VIEWER.md](docs/GRAPH_VIEWER.md)
+- Исходный код: [tools/graph_viewer/elehant_graph_periods_manual.py](tools/graph_viewer/elehant_graph_periods_manual.py)
+- EXE собирается в Windows через workflow [Graph Viewer — Windows EXE](.github/workflows/graph-viewer-build.yml). Готовый файл доступен в артефактах успешной сборки, а для тегов `graph-viewer-v*` публикуется GitHub Release.
+
+Программа читает `C:\\Elehant\\elehant_history.csv` и не изменяет историю. Не коммитьте CSV с реальными показаниями в публичный репозиторий.
