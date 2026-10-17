@@ -172,3 +172,14 @@ third_party/elehant_water
 - EXE собирается в Windows через workflow [Graph Viewer — Windows EXE](.github/workflows/graph-viewer-build.yml). Готовый файл доступен в артефактах успешной сборки, а для тегов `graph-viewer-v*` публикуется GitHub Release.
 
 Программа читает `C:\\Elehant\\elehant_history.csv` и не изменяет историю. Не коммитьте CSV с реальными показаниями в публичный репозиторий.
+
+
+## Полный установщик Windows
+
+Единый установщик собирает три приложения: основной монитор, фоновый BLE-сервис и Graph Viewer. Установка выполняется в \`C:\Elehant\`, существующая история \`elehant_history.csv\` не входит в установочный пакет и не заменяется.
+
+- Сценарий Inno Setup: [installer/Elehant_SVT15_Setup.iss](installer/Elehant_SVT15_Setup.iss)
+- Workflow сборки: [.github/workflows/full-installer-build.yml](.github/workflows/full-installer-build.yml)
+- Инструкция: [docs/INSTALLER.md](docs/INSTALLER.md)
+
+Для публикации релиза создай тег вида \`elehant-v1.0.0\`. GitHub Actions соберёт \`Elehant_SVT15_Setup.exe\` и приложит его к GitHub Release. Обычные сборки доступны в разделе Artifacts соответствующего workflow.
