@@ -3,15 +3,14 @@ name: Graph Viewer — Windows EXE
 on:
   push:
     branches: [master]
+    tags:
+      - "graph-viewer-v*"
     paths:
       - "tools/graph_viewer/**"
       - "docs/GRAPH_VIEWER.md"
       - ".github/workflows/graph-viewer-build.yml"
       - "README.md"
   workflow_dispatch:
-  push:
-    tags:
-      - "graph-viewer-v*"
 
 permissions:
   contents: write
