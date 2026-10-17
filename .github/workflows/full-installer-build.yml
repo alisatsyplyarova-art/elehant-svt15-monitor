@@ -60,7 +60,7 @@ jobs:
       - name: Compile full installer
         shell: pwsh
         run: |
-          $iscc = "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe"
+          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found: $iscc" }
           & $iscc "/DAppVersion=$env:APP_VERSION" "installer\Elehant_SVT15_Setup.iss"
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
