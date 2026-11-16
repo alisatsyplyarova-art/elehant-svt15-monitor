@@ -342,10 +342,12 @@ class Svt15Tft {
     tft_.setTextColor(col, C_BG);
     if (strcmp(label, "SUM") == 0) {
       // Σ рисуется линиями: стандартный шрифт Adafruit GFX не содержит Unicode-глифов.
-      tft_.drawLine(3, y + 9, 9, y + 9, col);
-      tft_.drawLine(9, y + 9, 5, y + 12, col);
-      tft_.drawLine(5, y + 12, 9, y + 15, col);
-      tft_.drawLine(3, y + 15, 9, y + 15, col);
+      // Нормальная ориентация Σ: верхняя и нижняя перекладины слева,
+      // обе диагонали сходятся в левой средней точке.
+      tft_.drawLine(3, y + 8, 10, y + 8, col);
+      tft_.drawLine(10, y + 8, 3, y + 12, col);
+      tft_.drawLine(3, y + 12, 10, y + 16, col);
+      tft_.drawLine(3, y + 16, 10, y + 16, col);
     } else {
       tft_.setCursor(3, y + 8);
       tft_.print(label);
