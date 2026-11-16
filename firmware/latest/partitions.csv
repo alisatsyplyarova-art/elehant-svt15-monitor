@@ -1,0 +1,7 @@
+# ESP32-C3 4 MB flash: two 1.5 MiB OTA app slots and ~956 KiB LittleFS.
+# Offsets/sizes are 4 KiB aligned; final end 0x3FF000 leaves 4 KiB margin.
+nvs,data,nvs,0x9000,0x5000
+otadata,data,ota,0xE000,0x2000
+app0,app,ota_0,0x10000,0x180000
+app1,app,ota_1,0x190000,0x180000
+littlefs,data,spiffs,0x310000,0xEF000
