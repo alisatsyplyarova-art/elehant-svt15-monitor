@@ -271,22 +271,12 @@ class TelegramManager {
                  (c.tgMode == SVT_TGM_WEEKLY && t.tm_wday == c.tgDay) ||
                  (c.tgMode == SVT_TGM_MONTHLY && t.tm_mday == c.tgDay);
       if (!day) continue;
-      // Не считаем расписание выполненным при постановке в очередь.
-      // Если сообщение уже ожидает отправки, повторно его не добавляем.
-      if (!scheduledQueued(i, key)) {
-        if (enqueueReadings(i, c.tgMode == SVT_TGM_MONTHLY, key)) changed = true;
+      if (enqueueReadings(i, c.tgMode == SVT_TGM_MONTHLY)) {
+        c.tgLast = key;
+        changed = true;
       }
     }
-    // tgLast сохраняется только после успешного ответа Telegram (HTTP 200).
-    (void)changed;
-  }
-
-  bool scheduledQueued(uint8_t meter, uint32_t key) const {
-    for (uint8_t n = 0; n < qn_; n++) {
-      uint8_t pos = (qh_ + n) % SVT_TG_Q;
-      if (qScheduledMeter_[pos] == meter && qScheduledKey_[pos] == key) return true;
-    }
-    return false;
+    if (changed) store_->save();
   }
 
   void repeatAlarms(uint32_t now) {
@@ -337,7 +327,7 @@ class TelegramManager {
   }
 
   // Сообщение с показаниями: набор данных задан настройками счётчика
-  bool enqueueReadings(uint8_t idx, bool monthly, uint32_t scheduledKey = 0) {
+  bool enqueueReadings(uint8_t idx, bool monthly) {
     MeterData m;
     if (!meters_->get(idx, m) || !m.valid) return false;
     MeterCfg& c = store_->at(m.type, m.id);
@@ -375,11 +365,7 @@ class TelegramManager {
     if (c.tgFields & SVT_TGF_BAT) { snprintf(x, sizeof(x), "%u", m.battery); add("\nБатарея: %s %%%s", x, ""); }
     if (c.tgFields & SVT_TGF_RSSI) { snprintf(x, sizeof(x), "%d", m.rssi); add("\nRSSI: %s dBm%s", x, ""); }
     if (c.tgFields & SVT_TGF_FW) { snprintf(x, sizeof(x), "%.1f", m.fw); add("\nПрошивка счётчика: %s%s", x, ""); }
-    if (!enqueue(b)) return false;
-    uint8_t pos = (qh_ + qn_ - 1) % SVT_TG_Q;
-    qScheduledMeter_[pos] = scheduledKey ? idx : 255;
-    qScheduledKey_[pos] = scheduledKey;
-    return true;
+    return enqueue(b);
   }
 
   void trySend(uint32_t now) {
@@ -394,17 +380,6 @@ class TelegramManager {
       return;
     }
     if (post(q_[qh_])) {
-      // Фиксируем дату расписания только после подтверждённой доставки.
-      if (qScheduledMeter_[qh_] != 255 && qScheduledKey_[qh_] != 0) {
-        MeterData sentMeter;
-        uint8_t idx = qScheduledMeter_[qh_];
-        if (meters_->get(idx, sentMeter)) {
-          store_->at(sentMeter.type, sentMeter.id).tgLast = qScheduledKey_[qh_];
-          store_->save();
-        }
-      }
-      qScheduledMeter_[qh_] = 255;
-      qScheduledKey_[qh_] = 0;
       qh_ = (qh_ + 1) % SVT_TG_Q;
       qn_--;
       fails_ = 0;
@@ -415,9 +390,7 @@ class TelegramManager {
     } else {
       snprintf(status_, sizeof(status_), "error %d", lastCode_);
       SVT_SERIAL.printf("TG: send failed, code %d\n", lastCode_);
-      if (++fails_ >= 3) {                   // сообщение удаляем, но расписание НЕ помечаем выполненным
-        qScheduledMeter_[qh_] = 255;
-        qScheduledKey_[qh_] = 0;
+      if (++fails_ >= 3) {                   // сообщение отбрасывается после трёх неудач
         qh_ = (qh_ + 1) % SVT_TG_Q;
         qn_--;
         fails_ = 0;
@@ -460,10 +433,6 @@ class TelegramManager {
   WifiManager* wifi_ = nullptr;
   MeterCfgStore* store_ = nullptr;
   char q_[SVT_TG_Q][SVT_TG_MSG];
-  // Метаданные очереди: для плановых сообщений сохраняем счётчик и дату.
-  // 255 означает обычное (неплановое) сообщение.
-  uint8_t qScheduledMeter_[SVT_TG_Q] = {255,255,255,255,255,255};
-  uint32_t qScheduledKey_[SVT_TG_Q] = {};
   uint8_t qh_ = 0, qn_ = 0;
   uint8_t nowIdx_ = 255;                 // 255: передача по кнопке не идёт
   uint32_t lastAlarm_[MAX_METERS][AL_COUNT] = {};   // когда отправлено уведомление о тревоге (0: не отправлялось)
