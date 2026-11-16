@@ -143,7 +143,7 @@ class Svt15Tft {
       return;
     }
 
-    // Тарифы: три одинаковые по размеру ячейки на всю ширину экрана.
+    // Тарифы: ячейки T1, T2 и суммы имеют одинаковую ширину.
     // Подписи и показания имеют один и тот же крупный размер шрифта.
     char v1[24], v2[24], vt[24];
     svt15FmtVol(v1, sizeof(v1), m.hasT1, m.t1, m.dec, 5);
@@ -155,7 +155,7 @@ class Svt15Tft {
       // Подпись занимает строго две позиции, значение печатается увеличенным шрифтом.
       tariffCell(y, "T1", v1, C_HOT, w_ - boxW_ - 2); y += 24;
       tariffCell(y, "T2", v2, C_COLD, w_ - boxW_ - 2); y += 24;
-      tariffCell(y, "ОБ", vt, C_TOTAL, w_); y += 24;
+      tariffCell(y, "SUM", vt, C_TOTAL, w_ - boxW_ - 2); y += 24;
     } else {
       tariffCell(y, lab1_, v1, C_HOT, w_); y += 18;
     }
@@ -340,8 +340,16 @@ class Svt15Tft {
     tft_.drawRect(0, y, width, cellH, col);
     tft_.setTextSize(1);
     tft_.setTextColor(col, C_BG);
-    tft_.setCursor(3, y + 8);
-    tft_.print(label);
+    if (strcmp(label, "SUM") == 0) {
+      // Σ рисуется линиями: стандартный шрифт Adafruit GFX не содержит Unicode-глифов.
+      tft_.drawLine(3, y + 9, 9, y + 9, col);
+      tft_.drawLine(9, y + 9, 5, y + 12, col);
+      tft_.drawLine(5, y + 12, 9, y + 15, col);
+      tft_.drawLine(3, y + 15, 9, y + 15, col);
+    } else {
+      tft_.setCursor(3, y + 8);
+      tft_.print(label);
+    }
     const uint8_t valueScale = 2;
     int maxChars = (width - 20) / (6 * valueScale);
     char shown[24];

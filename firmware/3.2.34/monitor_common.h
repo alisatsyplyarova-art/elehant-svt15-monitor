@@ -4,7 +4,7 @@
 #include "monitor_boards.h"    // плата: пины, память, SVT_SERIAL
 #include "monitor_profile.h"   // общие настройки
 
-#define SVT15_LCD_VERSION "3.2.33-cl"
+#define SVT15_LCD_VERSION "3.2.34"
 
 // Порт вывода SVT_SERIAL задаётся в monitor_boards.h
 

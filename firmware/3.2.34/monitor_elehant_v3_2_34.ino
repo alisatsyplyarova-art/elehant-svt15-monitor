@@ -1,4 +1,4 @@
-// Версия 3.2.33-cl, изменения: ../CHANGELOG.md
+// Версия 3.2.34, изменения: Σ вместо ОБ; ячейка суммы равна T1/T2.
 // Monitor Elehant (monitor_elehant): BLE-приём (пассивный) + таблица счётчиков + дисплей + Wi-Fi AP+STA + WEB + Serial0
 // Плата и дисплей выбираются ниже (BOARD_TYPE, DISPLAY_TYPE). Пины: monitor_boards.h, общие настройки: monitor_profile.h
 
