@@ -22,25 +22,17 @@ static const HardwareProfile HW = {
   "LILYGO T-Display S3 (verify PCB revision)",
   0, 14, true, true, 18, 17, 6, 7, 5, 38, 15, true
 };
-#elif defined(BOARD_ESP32_GENERIC)
-static const HardwareProfile HW = {
-  "Generic ESP32 — verify pins for exact board",
-  32, 33, true, true, 18, 23, 5, 16, 17, 4, -1, false
-};
 #else
 static const HardwareProfile HW = {
-  "ESP32-C3 + LCD5110 (user pin map; verify backlight wiring)",
-  1, 5, true, true, 3, 10, 7, 6, 11, 4, -1, false
+  "ESP32-C3 + ST7735 128x160 (user-verified wiring; no separate backlight)",
+  1, 0, true, true, 2, 3, 7, 6, 10, -1, -1, false
 };
 #endif
 
-// ESP32-C3 + Nokia 5110 based on the user-provided 32-pin map:
-// UP=GPIO1, DOWN=GPIO5; LCD SCLK=GPIO3, MOSI/DIN=GPIO10,
-// DC=GPIO6, CS=GPIO7, RST=GPIO11. Backlight is tied to 3V3,
-// so displayBacklight=-1 (not GPIO-controlled). Verify power pins on PCB.
-// GPIO4 (contact 28 in the supplied preliminary map) is used for backlight control;
-// confirm it is free and route BL through a suitable transistor/MOSFET if BL is tied to 3V3.
-// GPIO0/8/9 may be boot-strapping pins; GPIO18/19 are USB on ESP32-C3.
+// ESP32-C3 user-verified wiring: SCLK=GPIO2, MOSI=GPIO3, DC=GPIO6, CS=GPIO7, RST=GPIO10.
+// Buttons remain GPIO1/0.
+// This 7-pin display has no separate BL pin; backlight is assumed to be wired on the module.
+// GPIO2/8/9 are strapping pins; GPIO18/19 are USB on ESP32-C3. GPIO11-17 are reserved for module flash.
 // Classic T-Display: GPIO0=BTN1/BOOT; GPIO35=BTN2 (input-only, no internal pull-up);
 // display GPIO18=SCLK, 19=MOSI, 5=CS, 16=DC, 23=RST, 4=BL.
 // T-Display S3 typical pins: SCLK=18, MOSI=17, CS=6, DC=7, RST=5,

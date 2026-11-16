@@ -8,7 +8,7 @@
   #define BOARD_ESP32_C3
 #endif
 
-// Select one display. TTGO profiles default to their onboard ST7789.
+// Select one display. ESP32-C3 defaults to ST7735; TTGO profiles use onboard ST7789.
 // #define DISPLAY_LCD5110
 // #define DISPLAY_SSD1306
 // #define DISPLAY_SH1106
@@ -20,7 +20,7 @@
   #if defined(BOARD_TTGO_TDISPLAY) || defined(BOARD_TTGO_TDISPLAY_S3)
     #define DISPLAY_ST7789
   #else
-    #define DISPLAY_LCD5110
+    #define DISPLAY_ST7735
   #endif
 #endif
 
